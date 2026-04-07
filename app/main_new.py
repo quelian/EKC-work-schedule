@@ -801,10 +801,10 @@ async def settings_download_db(request: Request):
             sibling = db_path.with_name(db_path.stem + ".db" + ext)
             if sibling.exists():
                 zf.write(sibling, sibling.name)
-    # Любые другие файлы в data/ (кроме самого .db и его помощников)
-    for f in data_dir.iterdir():
-        if f.name not in (db_path.name, db_path.stem + ".db-shm", db_path.stem + ".db-wal"):
-            zf.write(f, "data/" + f.name)
+        # Любые другие файлы в data/
+        for f in data_dir.iterdir():
+            if f.name not in (db_path.name, db_path.stem + ".db-shm", db_path.stem + ".db-wal"):
+                zf.write(f, f.name)
 
     zip_buffer.seek(0)
 
