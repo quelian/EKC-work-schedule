@@ -31,23 +31,23 @@
                 </label>
             </div>
 
-            <div class="settings-divider"></div>
+            <div class="settings-divider mt-6"></div>
 
-            <!-- Notifications Toggle -->
-            <div class="settings-row">
-                <div class="settings-row__info">
-                    <span class="settings-row__label">Уведомления</span>
-                    <span class="settings-row__desc">Показывать уведомления об изменениях в расписании</span>
-                </div>
-                <label class="toggle">
-                    <input type="checkbox" name="notifications_enabled"
-                           {% if notifications_enabled %}checked{% endif %}>
-                    <span class="toggle__track"></span>
-                </label>
+            <!-- Download DB -->
+                <button type="submit" class="btn btn--primary">Сохранить</button>
             </div>
 
-            <div class="mt-6">
-                <button type="submit" class="btn btn--primary">Сохранить</button>
+            <div class="settings-divider"></div>
+
+            <!-- Download DB -->
+            <div class="settings-row">
+                <div class="settings-row__info">
+                    <span class="settings-row__label">Скачать базу данных</span>
+                    <span class="settings-row__desc">Архив со всеми файлами БД и каталога data/</span>
+                </div>
+                <a href="/settings/download-db" class="btn btn--outline" download>
+                    Скачать ZIP
+                </a>
             </div>
         </form>
     </div>
@@ -60,10 +60,6 @@
             </div>
         </div>
         <div class="about-grid">
-            <div class="about-item">
-                <span class="about-item__label">Продукт</span>
-                <span class="about-item__value">ЕКЦ График — планировщик смен</span>
-            </div>
             <div class="about-item">
                 <span class="about-item__label">Версия</span>
                 <span class="about-item__value">2.0</span>

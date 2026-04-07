@@ -1,7 +1,7 @@
 """Новый главный файл с обновлённым дизайном."""
 import logging
 from fastapi import FastAPI, Request, Form, Response
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -734,7 +734,7 @@ async def settings_page(
     from .database import get_app_settings
 
     # Загружаем настройки из БД
-    settings = get_app_settings(['autosave_enabled', 'notifications_enabled'])
+    settings = get_app_settings(['autosave_enabled'])
 
     context = {
         "request": request,
@@ -743,7 +743,6 @@ async def settings_page(
         "month_label": f"{'Январь Февраль Март Апрель Май Июнь Июль Август Сентябрь Октябрь Ноябрь Декабрь'.split()[month-1]} {year}",
         "active_page": "settings",
         "autosave_enabled": settings.get('autosave_enabled', 'true').lower() == 'true',
-        "notifications_enabled": settings.get('notifications_enabled', 'true').lower() == 'true',
         "errors": [],
         "notices": [],
     }
@@ -758,7 +757,6 @@ async def settings_page(
 async def settings_save_page(
     request: Request,
     autosave_enabled: str = Form("off"),
-    notifications_enabled: str = Form("off"),
 ) -> HTMLResponse:
     """Сохраняет настройки в БД."""
     if not request.session.get("logged_in_user"):
@@ -771,11 +769,53 @@ async def settings_save_page(
 
     settings = {}
     settings['autosave_enabled'] = 'true' if autosave_enabled == 'on' else 'false'
-    settings['notifications_enabled'] = 'true' if notifications_enabled == 'on' else 'false'
 
     set_app_settings(settings)
 
     return RedirectResponse("/settings", status_code=303)
+
+
+@app.get("/settings/download-db")
+async def settings_download_db(request: Request):
+    """Скачивает архив с базой данных и всеми вспомогательными файлами (только для админов)."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/my-schedule", status_code=303)
+
+    from .database import get_db_path
+    import zipfile
+    import io
+    import time
+
+    db_path = get_db_path()
+    data_dir = db_path.parent
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        # Основной файл БД
+        if db_path.exists():
+            zf.write(db_path, db_path.name)
+        # WAL и SHM файлы (могут отсутствовать)
+        for ext in ("-shm", "-wal"):
+            sibling = db_path.with_name(db_path.stem + ".db" + ext)
+            if sibling.exists():
+                zf.write(sibling, sibling.name)
+    # Любые другие файлы в data/ (кроме самого .db и его помощников)
+    for f in data_dir.iterdir():
+        if f.name not in (db_path.name, db_path.stem + ".db-shm", db_path.stem + ".db-wal"):
+            zf.write(f, "data/" + f.name)
+
+    zip_buffer.seek(0)
+
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    filename = f"ekc_backup_{timestamp}.zip"
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+    )
 
 
 # =============================================================================
