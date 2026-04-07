@@ -1,0 +1,2847 @@
+{% extends "base_new.html" %}
+
+{% block title %}Моя занятость - {{ employee_name }}{% endblock %}
+{% block page_title %}Моя занятость{% endblock %}
+{% block page_subtitle %}Календарь учёбы и пожеланий на {{ month_label }}{% endblock %}
+
+{% block header_actions %}
+<div class="flex flex-wrap gap-2">
+    <button onclick="ModalSystem.open('bulkImportModal')" class="btn btn--study">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+        Импорт учёбы из ЛК
+    </button>
+    <button onclick="showStudyModal()" class="btn btn--study">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Добавить учёбу
+    </button>
+    <button onclick="showPreferenceModal()" class="btn btn--pref">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Добавить пожелания
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Study / Preference header buttons */
+.btn--study {
+    background: linear-gradient(135deg, rgba(0, 122, 255, 0.85), rgba(0, 90, 200, 0.85));
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    color: white;
+    border: 0.5px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 10px rgba(0, 122, 255, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.15) inset;
+    font-weight: 600;
+}
+.btn--study::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+    pointer-events: none;
+}
+.btn--study:hover {
+    background: linear-gradient(135deg, rgba(0, 102, 214, 0.9), rgba(0, 75, 175, 0.9));
+    box-shadow: 0 4px 20px rgba(0, 122, 255, 0.4), 0 0 30px rgba(0, 122, 255, 0.1);
+    transform: translateY(-1px);
+}
+.btn--study:active {
+    transform: scale(0.98);
+}
+
+.btn--pref {
+    background: linear-gradient(135deg, rgba(255, 149, 0, 0.85), rgba(224, 134, 0, 0.85));
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    color: white;
+    border: 0.5px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 10px rgba(255, 149, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.15) inset;
+    font-weight: 600;
+}
+.btn--pref::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+    pointer-events: none;
+}
+.btn--pref:hover {
+    background: linear-gradient(135deg, rgba(224, 134, 0, 0.9), rgba(196, 117, 0, 0.9));
+    box-shadow: 0 4px 20px rgba(255, 149, 0, 0.4), 0 0 30px rgba(255, 149, 0, 0.1);
+    transform: translateY(-1px);
+}
+.btn--pref:active {
+    transform: scale(0.98);
+}
+
+/* Calendar day states */
+.calendar-day.is-shift {
+    background: var(--blue-50);
+    border-color: var(--blue-500);
+}
+
+.calendar-day.no-shift {
+    background: var(--green-50);
+    border-color: var(--green-500);
+}
+
+.calendar-day.is-weekend {
+    background: var(--orange-50);
+    border-color: var(--orange-100);
+}
+
+.calendar-day.is-weekend .calendar-day__number {
+    color: var(--orange-700);
+}
+
+.calendar-day.is-empty {
+    background: var(--gray-100);
+    border-style: dashed;
+    cursor: default;
+    min-height: 100px;
+}
+
+.calendar-day.is-empty:hover {
+    background: var(--gray-100);
+    transform: none;
+    box-shadow: none;
+}
+
+/* Day number badge */
+.day-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 14px;
+    background: var(--card);
+    color: var(--gray-800);
+    margin-bottom: 6px;
+}
+
+.calendar-day.is-shift .day-num {
+    background: var(--apple-blue);
+    color: white;
+}
+
+/* Day indicator chips */
+.day-chip {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.day-chip--study { background: var(--blue-500); color: white; }
+.day-chip--pref-off { background: var(--orange-500); color: white; }
+.day-chip--pref-work { background: var(--green-500); color: white; }
+.day-chip--shift { background: var(--red-500); color: white; }
+.day-chip--vacation { background: var(--green-600); color: white; }
+.day-chip--other { background: var(--purple-500); color: white; }
+
+/* Stats row */
+.my-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.my-stats__card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--ease);
+}
+
+.my-stats__card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+}
+
+.my-stats__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.my-stats__icon--blue { background: var(--blue-100); color: var(--blue-600); }
+.my-stats__icon--red { background: var(--red-100); color: var(--red-600); }
+.my-stats__icon--green { background: var(--green-100); color: var(--green-600); }
+.my-stats__icon--orange { background: var(--orange-100); color: var(--orange-600); }
+.my-stats__icon--purple { background: var(--purple-100); color: var(--purple-600); }
+.my-stats__icon--pink { background: var(--pink-100); color: var(--pink-600); }
+
+.my-stats__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 2px;
+}
+
+.my-stats__value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.my-stats__body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Legend chips */
+.my-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.my-legend__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.my-legend__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.my-legend__dot--vacation { background: var(--apple-green); }
+.my-legend__dot--shift { background: var(--apple-blue); }
+.my-legend__dot--study { background: var(--apple-blue); }
+.my-legend__dot--pref-off { background: var(--apple-orange); }
+.my-legend__dot--other { background: var(--apple-purple); }
+.my-legend__dot--weekend { background: var(--apple-orange); }
+
+/* Constraint item in day modal */
+.constraint-item {
+    background: var(--card);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    border-left: 4px solid var(--line);
+    margin-top: 8px;
+}
+
+.constraint-item--study { border-left-color: var(--blue-500); }
+.constraint-item--pref { border-left-color: var(--orange-500); }
+.constraint-item--shift { border-left-color: var(--red-500); }
+.constraint-item--vacation { border-left-color: var(--green-500); }
+.constraint-item--other { border-left-color: var(--purple-500); }
+
+.constraint-item__time {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.constraint-item__time--blue { color: var(--blue-600); }
+.constraint-item__time--orange { color: var(--orange-600); }
+.constraint-item__time--red { color: var(--red-600); }
+.constraint-item__time--green { color: var(--green-600); }
+.constraint-item__time--purple { color: var(--purple-600); }
+
+.constraint-item__note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.constraint-item__actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.constraint-item__btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--ease);
+}
+
+.constraint-item__btn--edit {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.constraint-item__btn--edit:hover {
+    background: var(--gray-200);
+}
+
+.constraint-item__btn--delete {
+    background: var(--red-50);
+    color: var(--red-600);
+}
+
+.constraint-item__btn--delete:hover {
+    background: var(--red-100);
+}
+
+/* Radio option cards — glass pills */
+.radio-card {
+    padding: 12px 14px;
+    border: 0.5px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--ease);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 64px;
+    gap: 6px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px) saturate(150%);
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
+}
+
+.radio-card:hover {
+    border-color: var(--glass-hover-border);
+    background: var(--glass-hover);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.radio-card.selected {
+    border-color: var(--apple-blue);
+    background: rgba(0, 122, 255, 0.1);
+    color: var(--apple-blue);
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
+}
+
+.radio-card input[type="radio"] {
+    display: none;
+}
+
+.radio-card__icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.radio-card__label {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+/* Monthly pref cards */
+.monthly-pref-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--orange-50);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--orange-500);
+}
+
+.monthly-pref-card__icon {
+    width: 20px;
+    height: 20px;
+    color: var(--orange-500);
+    flex-shrink: 0;
+}
+
+.monthly-pref-card__text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.monthly-pref-card__note {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.monthly-pref-card__actions {
+    display: flex;
+    gap: 4px;
+}
+
+/* Multi-date picker */
+.date-picker-cell {
+    font-size: 13px;
+    padding: 8px 4px;
+    text-align: center;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--ease);
+    font-weight: 500;
+    color: var(--gray-700);
+    background: var(--card);
+}
+
+.date-picker-cell:hover {
+    background: var(--gray-100);
+}
+
+.date-picker-cell.selected {
+    background: var(--orange-500);
+    color: white;
+    font-weight: 700;
+}
+
+.date-picker-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-align: center;
+    padding: 4px;
+}
+
+/* Calendar weekday header */
+.cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 0 20px;
+}
+
+.cal-weekday {
+    text-align: center;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 8px 4px;
+}
+
+.cal-weekday--weekend {
+    color: var(--red-500);
+}
+
+/* Toast */
+.my-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--card);
+    padding: 14px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    z-index: 2000;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.my-toast__icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* Import hint */
+.import-hint {
+    border-radius: var(--radius-md);
+    padding: 16px 18px;
+    border: 0.5px solid rgba(0, 122, 255, 0.12);
+    background: rgba(0, 122, 255, 0.04);
+}
+
+.import-hint__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--blue-700);
+    margin-bottom: 6px;
+}
+
+.import-hint__text {
+    font-size: 14px;
+    color: var(--blue-600);
+    line-height: 1.5;
+}
+
+/* Weekday headers inside the calendar container */
+.calendar-container {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-sm);
+    padding: 24px 0;
+}
+
+.calendar-container .cal-weekdays {
+    padding: 0 20px;
+    margin-bottom: 0;
+}
+
+.calendar-container .my-calendar-grid {
+    padding: 12px 20px 20px;
+}
+
+/* The calendar grid itself */
+.my-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    padding: 12px 20px 20px;
+}
+
+/* Responsive monthly prefs */
+.monthly-prefs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ===== MODAL — Refined Apple-Style Surface ===== */
+/* Base backdrop — fullscreen fixed overlay with blur */
+.modal-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    z-index: 1000 !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms;
+}
+.modal-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+    animation: backdropFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Dialog base — liquid glass panel */
+.modal-backdrop .modal-dialog.modal-scrollable {
+    max-height: min(680px, 85vh);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 0.5px solid rgba(255, 255, 255, 0.5);
+    box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.12),
+        0 8px 24px rgba(0, 0, 0, 0.04),
+        0 0 0 0.5px rgba(255, 255, 255, 0.6) inset;
+}
+.modal-backdrop.open .modal-dialog.modal-scrollable {
+    animation: modalSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Header — glass top area */
+.modal-backdrop .modal-dialog.modal-scrollable .modal-header {
+    flex-shrink: 0;
+    padding: 20px 28px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background: transparent;
+}
+.modal-backdrop .modal-dialog.modal-scrollable .modal-title {
+    font-size: 17px;
+    letter-spacing: -0.02em;
+}
+.modal-backdrop .modal-dialog.modal-scrollable .modal-close {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.04);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 200ms ease;
+}
+.modal-backdrop .modal-dialog.modal-scrollable .modal-close:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--text-tertiary);
+}
+
+/* --- Soft themed headers --- */
+.modal-header--import,
+.modal-header--study,
+.modal-header--preference {
+    position: relative;
+    padding: 24px 28px 20px !important;
+    overflow: hidden;
+}
+
+/* Soft glow in background — no heavy bars */
+.modal-header--import::before,
+.modal-header--study::before,
+.modal-header--preference::before {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -10px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.15;
+    pointer-events: none;
+}
+.modal-header--import::before  { background: var(--apple-blue); }
+.modal-header--study::before   { background: var(--apple-purple); }
+.modal-header--preference::before { background: var(--apple-orange); }
+
+/* Icon + text flex row */
+.modal-header__content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.modal-header__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    line-height: 1.25;
+}
+.modal-backdrop .modal-dialog.modal-scrollable .modal-header__text .modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+.modal-subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: color-mix(in srgb, var(--text-primary) 40%, transparent);
+    font-weight: 400;
+}
+
+/* Icon — soft circle */
+.modal-header__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.modal-header__icon--import {
+    background: color-mix(in srgb, var(--apple-blue) 8%, transparent);
+    color: var(--apple-blue);
+}
+.modal-header__icon--study {
+    background: color-mix(in srgb, var(--apple-purple) 8%, transparent);
+    color: var(--apple-purple);
+}
+.modal-header__icon--preference {
+    background: color-mix(in srgb, var(--apple-orange) 8%, transparent);
+    color: var(--apple-orange);
+}
+
+/* Scrollable body — smooth scroll area */
+.modal-backdrop .modal-dialog.modal-scrollable #dayConstraintsList,
+.modal-backdrop .modal-dialog.modal-scrollable form {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 20px 28px;
+    scroll-behavior: smooth;
+}
+
+/* Footer — subtle glass strip */
+.modal-backdrop .modal-dialog.modal-scrollable .modal-footer {
+    flex-shrink: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    background: rgba(255, 255, 255, 0.15);
+    padding: 14px 28px 18px;
+    gap: 10px;
+}
+
+/* --- Responsive sizing tiers --- */
+/* Default / mobile: compact */
+.modal-backdrop .modal-dialog.modal-scrollable {
+    width: min(480px, calc(100vw - 32px));
+}
+.modal-backdrop .modal-dialog.modal-scrollable.wide-wide-modal {
+    width: min(640px, calc(100vw - 32px));
+}
+
+/* Tablet: breathe more */
+@media (min-width: 768px) {
+    .modal-backdrop .modal-dialog.modal-scrollable {
+        width: min(520px, 90vw);
+    }
+    .modal-backdrop .modal-dialog.modal-scrollable.wide-wide-modal {
+        width: min(680px, 90vw);
+    }
+    .modal-backdrop .modal-dialog.modal-scrollable {
+        max-height: min(720px, 85vh);
+    }
+}
+
+/* 16:9 landscape: wide but not absurd — proportional, not crude stretch */
+@media (min-width: 1280px) and (min-height: 600px) and (max-height: 1000px) {
+    .modal-backdrop .modal-dialog.modal-scrollable {
+        max-height: min(720px, 80vh);
+        width: min(560px, 60vw);
+    }
+    .modal-backdrop .modal-dialog.modal-scrollable.wide-wide-modal {
+        max-height: min(760px, 82vh);
+        width: min(740px, 65vw);
+    }
+}
+
+/* Very tall screens (portrait monitors) — use more vertical space */
+@media (min-height: 1000px) {
+    .modal-backdrop .modal-dialog.modal-scrollable {
+        max-height: min(850px, 80vh);
+    }
+}
+
+/* --- Scrollbar — minimal Apple-style --- */
+.modal-backdrop .modal-dialog.modal-scrollable #dayConstraintsList::-webkit-scrollbar,
+.modal-backdrop .modal-dialog.modal-scrollable form::-webkit-scrollbar {
+    width: 5px;
+}
+.modal-backdrop .modal-dialog.modal-scrollable #dayConstraintsList::-webkit-scrollbar-track,
+.modal-backdrop .modal-dialog.modal-scrollable form::-webkit-scrollbar-track {
+    background: transparent;
+}
+.modal-backdrop .modal-dialog.modal-scrollable #dayConstraintsList::-webkit-scrollbar-thumb,
+.modal-backdrop .modal-dialog.modal-scrollable form::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted, #999) 50%, transparent);
+    border-radius: 3px;
+}
+.modal-backdrop .modal-dialog.modal-scrollable #dayConstraintsList::-webkit-scrollbar-thumb:hover,
+.modal-backdrop .modal-dialog.modal-scrollable form::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--muted, #999) 75%, transparent);
+}
+
+/* --- Entrance animations --- */
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes backdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Make standard modals scrollable on smaller screens too */
+@media (max-width: 1024px) {
+    .modal-dialog {
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* ============================================================
+   IMPORT MODAL — Wide Layout
+   ============================================================ */
+
+/* Dialog — force wide */
+#bulkImportModal.modal-backdrop .modal-dialog {
+    width: min(97vw, 1700px) !important;
+    max-height: 92vh !important;
+    border-radius: 24px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.modal-header--import {
+    padding: 22px 32px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
+}
+
+.modal-header__icon--import {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--apple-blue) 12%, transparent), color-mix(in srgb, var(--apple-blue) 6%, transparent));
+    color: var(--apple-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Form — must be flex to pass stretch height from dialog to body */
+#bulkImportForm {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+
+/* Body — stretches from flex parent form to fill available height */
+.import-modal-body {
+    flex: 1 1 auto !important;
+    min-height: 0;
+    overflow-x: hidden;
+}
+#bulkImportModal .import-modal-body {
+    padding: 24px 32px;
+    overflow-y: auto;
+}
+
+/* Layout — two equal columns, tall */
+.import-layout {
+    display: flex !important;
+    gap: 24px;
+    align-items: stretch !important;
+    min-height: 560px;
+}
+
+/* Both panels equal width */
+.import-panel {
+    flex: 1 1 0 !important;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.import-panel .form-label {
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    opacity: 0.65;
+    margin-bottom: 0;
+}
+
+.import-paste-zone {
+    display: flex !important;
+    flex-direction: column;
+    height: 480px;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02), 0 0 0 0.5px rgba(255, 255, 255, 0.5) inset;
+}
+
+.import-paste-zone:has(.import-textarea:focus) {
+    border-color: var(--apple-blue);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--apple-blue) 10%, transparent), 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.import-textarea {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.86rem;
+    line-height: 1.65;
+    resize: none;
+    width: 100%;
+    flex: 1 1 auto !important;
+    min-height: 0;
+    border: none;
+    border-radius: calc(var(--radius-lg) - 2px);
+    padding: 14px 16px;
+    background: transparent;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.import-textarea::placeholder {
+    color: color-mix(in srgb, var(--text-primary) 28%, transparent);
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+.import-textarea::-webkit-scrollbar { width: 6px; }
+.import-textarea::-webkit-scrollbar-track { background: transparent; }
+.import-textarea::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 3px;
+}
+.import-textarea::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+
+/* Video panel — equal width, simple layout */
+#bulkImportModal .import-video-panel {
+    flex: 1 1 0 !important;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#bulkImportModal .import-video-panel .form-label {
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    opacity: 0.65;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#bulkImportModal .import-video-panel .form-label::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--apple-blue);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--apple-blue) 45%, transparent);
+    flex-shrink: 0;
+}
+
+/* Video wrapper — same height as paste zone */
+#bulkImportModal .import-video-wrapper {
+    width: 100%;
+    height: 480px;
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1.5px solid var(--line);
+    background: rgba(255, 255, 255, 0.55);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02), 0 0 0 0.5px rgba(255, 255, 255, 0.5) inset;
+}
+
+#bulkImportModal .import-video__source {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+}
+
+#bulkImportModal .import-video__canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    cursor: pointer;
+}
+
+/* Footer */
+.import-modal-footer {
+    flex-shrink: 0;
+    padding: 18px 32px 22px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    gap: 12px;
+    background: rgba(245, 247, 250, 0.6);
+}
+
+.import-modal-footer .btn {
+    flex: 1;
+    padding: 14px 24px;
+    font-weight: 650;
+    font-size: 0.95rem;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.import-modal-footer .btn--secondary {
+    background: rgba(0, 0, 0, 0.035);
+    color: var(--text-primary);
+    border: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.import-modal-footer .btn--secondary:hover {
+    background: rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.import-modal-footer .btn--primary {
+    background: linear-gradient(135deg, var(--apple-blue) 0%, #3478f6 100%);
+    color: #fff;
+    box-shadow: 0 3px 14px color-mix(in srgb, var(--apple-blue) 35%, transparent);
+}
+
+.import-modal-footer .btn--primary:hover {
+    box-shadow: 0 6px 28px color-mix(in srgb, var(--apple-blue) 48%, transparent);
+    transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    #bulkImportModal.modal-backdrop .modal-dialog { width: min(98vw, 1100px) !important; }
+    .import-layout { flex-direction: column !important; min-height: auto; }
+    .import-textarea { min-height: 350px; }
+    #bulkImportModal .import-video-wrapper { min-height: 300px; }
+}
+
+@media (max-width: 560px) {
+    #bulkImportModal.modal-backdrop .modal-dialog { width: 100vw !important; max-height: 100vh !important; border-radius: 0 !important; }
+    #bulkImportModal .import-modal-body { padding: 16px 12px; }
+    .import-textarea { min-height: 200px; }
+    #bulkImportModal .import-video-wrapper { min-height: 200px; }
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats Row -->
+<div class="my-stats">
+    <div class="my-stats__card">
+        <div class="my-stats__body">
+            <div class="my-stats__icon my-stats__icon--blue">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </div>
+            <div>
+                <div class="my-stats__label">Учёба</div>
+                <div class="my-stats__value" style="color: var(--blue-600);">{{ calendar_days|selectattr('unavailable')|list|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="my-stats__card">
+        <div class="my-stats__body">
+            <div class="my-stats__icon my-stats__icon--red">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/></svg>
+            </div>
+            <div>
+                <div class="my-stats__label">Смены</div>
+                <div class="my-stats__value" style="color: var(--red-600);">{{ calendar_days|selectattr('shifts')|list|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="my-stats__card">
+        <div class="my-stats__body">
+            <div class="my-stats__icon my-stats__icon--green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            </div>
+            <div>
+                <div class="my-stats__label">Отпуск</div>
+                <div class="my-stats__value" style="color: var(--green-600);">{{ calendar_days|selectattr('vacations')|list|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="my-stats__card">
+        <div class="my-stats__body">
+            <div class="my-stats__icon my-stats__icon--orange">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </div>
+            <div>
+                <div class="my-stats__label">Пожелания</div>
+                <div class="my-stats__value" style="color: var(--orange-600);">{{ preferences|length + (monthly_preferences|default([])|list|length) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="my-stats__card">
+        <div class="my-stats__body">
+            <div class="my-stats__icon my-stats__icon--purple">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div>
+                <div class="my-stats__label">Норма</div>
+                <div class="my-stats__value" style="color: var(--purple-600);">{{ norm_hours }} ч.</div>
+            </div>
+        </div>
+    </div>
+    <div class="my-stats__card">
+        <div class="my-stats__body">
+            <div class="my-stats__icon my-stats__icon--pink">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="8"/></svg>
+            </div>
+            <div>
+                <div class="my-stats__label">Факт</div>
+                <div class="my-stats__value" style="color: var(--pink-600);">{{ worked_hours }} ч.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="my-legend mb-4">
+    <div class="my-legend__chip">
+        <div class="my-legend__dot my-legend__dot--vacation"></div>
+        <span>Отпуск</span>
+    </div>
+    <div class="my-legend__chip">
+        <div class="my-legend__dot my-legend__dot--shift"></div>
+        <span>Смена</span>
+    </div>
+    <div class="my-legend__chip">
+        <div class="my-legend__dot my-legend__dot--study"></div>
+        <span>Учёба</span>
+    </div>
+    <div class="my-legend__chip">
+        <div class="my-legend__dot my-legend__dot--pref-off"></div>
+        <span>Не ставить</span>
+    </div>
+    <div class="my-legend__chip">
+        <div class="my-legend__dot my-legend__dot--other"></div>
+        <span>Другое</span>
+    </div>
+    <div class="my-legend__chip">
+        <div class="my-legend__dot my-legend__dot--weekend"></div>
+        <span>Выходной</span>
+    </div>
+</div>
+
+<!-- Calendar -->
+<div class="calendar-container">
+    <div class="cal-weekdays">
+        <div class="cal-weekday">Пн</div>
+        <div class="cal-weekday">Вт</div>
+        <div class="cal-weekday">Ср</div>
+        <div class="cal-weekday">Чт</div>
+        <div class="cal-weekday">Пт</div>
+        <div class="cal-weekday cal-weekday--weekend">Сб</div>
+        <div class="cal-weekday cal-weekday--weekend">Вс</div>
+    </div>
+
+    <div class="my-calendar-grid">
+        {% set first_day = calendar_days[0].weekday %}
+        {% for _ in range(first_day) %}
+        <div class="calendar-day is-empty"></div>
+        {% endfor %}
+
+        {% for day_data in calendar_days %}
+        {% set has_shift = day_data.shifts|length > 0 %}
+        <div class="calendar-day
+            {% if has_shift %}is-shift{% else %}no-shift{% endif %}
+            {% if day_data.is_weekend %} is-weekend{% endif %}
+            "
+            onclick="openDayModal('{{ day_data.date }}', {{ day_data.day }}, '{{ day_data.date }}')">
+
+            <div class="day-num">{{ day_data.day }}</div>
+
+            <div class="calendar-day__items">
+                {% set events = [] %}
+                {% for v in day_data.vacations %}
+                    {% set _ = events.append({'type': 'vacation', 'time': '00:00', 'priority': 2, 'html': '<div class="day-chip day-chip--vacation">Отпуск</div>'}) %}
+                {% endfor %}
+                {% for s in day_data.shifts %}
+                    {% set _ = events.append({'type': 'shift', 'time': s.start_time, 'priority': 1, 'html': '<div class="day-chip day-chip--shift">' + s.start_time + '-' + s.end_time + '</div>'}) %}
+                {% endfor %}
+                {% for u in day_data.unavailable %}
+                    {% set _ = events.append({'type': 'study', 'time': u.start_time, 'priority': 3, 'html': '<div class="day-chip day-chip--study">' + u.start_time + '-' + u.end_time + '</div>'}) %}
+                {% endfor %}
+                {% for p in day_data.preferences %}
+                    {% if p.preference_type == 'prefer_off' %}
+                        {% set has_time = p.start_time and p.end_time %}
+                        {% if has_time %}
+                            {% set _ = events.append({'type': 'preference', 'time': p.start_time, 'priority': 4, 'html': '<div class="day-chip day-chip--pref-off">Не ставить ' ~ p.start_time ~ '-' ~ p.end_time ~ '</div>'}) %}
+                        {% else %}
+                            {% set _ = events.append({'type': 'preference', 'time': '00:00', 'priority': 4, 'html': '<div class="day-chip day-chip--pref-off">Не ставить</div>'}) %}
+                        {% endif %}
+                    {% elif p.preference_type == 'not_before' %}
+                        {% set nb_time = p.end_time or p.start_time or '00:00' %}
+                        {% set _ = events.append({'type': 'preference', 'time': nb_time, 'priority': 4, 'html': '<div class="day-chip day-chip--pref-off">Не ставить до ' ~ nb_time ~ '</div>'}) %}
+                    {% elif p.preference_type == 'not_after' %}
+                        {% set na_time = p.start_time or '00:00' %}
+                        {% set _ = events.append({'type': 'preference', 'time': na_time, 'priority': 4, 'html': '<div class="day-chip day-chip--pref-off">Не ставить после ' ~ na_time ~ '</div>'}) %}
+                    {% elif p.preference_type == 'other' %}{% endif %}
+                {% endfor %}
+                {% for mp in day_data.monthly_preferences %}
+                    {% if mp.preference_type == 'prefer_off' %}
+                        {% set _ = events.append({'type': 'monthly_pref', 'time': '00:00', 'priority': 4, 'html': '<div class="day-chip day-chip--pref-off">Не ставить (мес)</div>'}) %}
+                    {% elif mp.preference_type == 'not_before' %}
+                        {% set _ = events.append({'type': 'monthly_pref', 'time': '00:00', 'priority': 4, 'html': '<div class="day-chip day-chip--pref-off">Не ставить до ' ~ mp.time_value ~ '</div>'}) %}
+                    {% elif mp.preference_type == 'not_after' %}
+                        {% set _ = events.append({'type': 'monthly_pref', 'time': '00:00', 'priority': 4, 'html': '<div class="day-chip day-chip--pref-off">Не ставить после ' ~ mp.time_value ~ '</div>'}) %}
+                    {% elif mp.preference_type == 'other' %}{% endif %}
+                {% endfor %}
+                {% for event in events|sort(attribute='priority')|sort(attribute='time') %}
+                {{ event.html|safe }}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Monthly Preferences Section -->
+{% if monthly_preferences %}
+<div class="card mt-6">
+    <div class="section-head mb-4">
+        <div>
+            <h2 class="section-head__title">Пожелания на месяц</h2>
+        </div>
+    </div>
+    <div class="monthly-prefs-list">
+        {% for pref in monthly_preferences %}
+        <div class="monthly-pref-card">
+            <div class="flex items-center gap-3">
+                {% if pref.preference_type == 'not_before' %}
+                <svg class="monthly-pref-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                <div>
+                    <p class="monthly-pref-card__text">Не ставить до {{ pref.time_value }}</p>
+                    {% if pref.note %}<p class="monthly-pref-card__note">{{ pref.note }}</p>{% endif %}
+                </div>
+                {% elif pref.preference_type == 'not_after' %}
+                <svg class="monthly-pref-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <div>
+                    <p class="monthly-pref-card__text">Не ставить после {{ pref.time_value }}</p>
+                    {% if pref.note %}<p class="monthly-pref-card__note">{{ pref.note }}</p>{% endif %}
+                </div>
+                {% elif pref.preference_type == 'prefer_off' %}
+                <svg class="monthly-pref-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                <div>
+                    <p class="monthly-pref-card__text">Не ставить (весь месяц)</p>
+                    {% if pref.note %}<p class="monthly-pref-card__note">{{ pref.note }}</p>{% endif %}
+                </div>
+                {% elif pref.preference_type == 'other' %}
+                <svg class="monthly-pref-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <div>
+                    <p class="monthly-pref-card__text">{{ pref.note or 'Другое пожелание' }}</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="monthly-pref-card__actions">
+                <button type="button" class="constraint-item__btn constraint-item__btn--edit" onclick="showEditMonthlyPrefConfirm('{{ employee_name }}', '{{ pref.preference_type }}', '{{ pref.time_value or '' }}', '{{ pref.note or '' }}')" aria-label="Редактировать">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button type="button" class="constraint-item__btn constraint-item__btn--delete" onclick="showDeleteMonthlyPrefConfirm('{{ employee_name | replace("\\", "\\\\") | replace("'", "\\'") | replace('"', '\\"') }}', '{{ pref.preference_type | replace("'", "\\'") | replace('"', '\\"') }}')" aria-label="Удалить">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Day Detail Modal -->
+<div class="modal-backdrop" id="dayModal">
+    <div class="modal-dialog modal-scrollable">
+        <div class="modal-header">
+            <h3 class="modal-title" id="dayModalTitle">День</h3>
+            <button class="modal-close" onclick="ModalSystem.close('dayModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <input type="hidden" id="selectedDate" value="">
+
+        <div id="dayConstraintsList">
+            <!-- Constraints will be loaded here -->
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn--secondary flex-1" onclick="showAddFromDayModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Добавить
+            </button>
+            <button type="button" class="btn btn--secondary flex-1" onclick="ModalSystem.close('dayModal')">
+                Закрыть
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Choice Modal -->
+<div class="modal-backdrop" id="addChoiceModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">Добавить на этот день</h3>
+            <button class="modal-close" onclick="ModalSystem.close('addChoiceModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button type="button" class="card flex-1 p-6 flex flex-col items-center justify-center gap-2" onclick="ModalSystem.close('addChoiceModal'); showStudyModalForDate()" style="cursor: pointer; text-align: center;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-600)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <p class="font-semibold">Учёбу</p>
+            </button>
+            <button type="button" class="card flex-1 p-6 flex flex-col items-center justify-center gap-2" onclick="ModalSystem.close('addChoiceModal'); showPreferenceModalForDate()" style="cursor: pointer; text-align: center;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--orange-600)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <p class="font-semibold">Пожелание</p>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Study Modal -->
+<div class="modal-backdrop" id="editStudyModal">
+    <div class="modal-dialog modal-scrollable">
+        <div class="modal-header">
+            <h3 class="modal-title">Редактировать учёбу</h3>
+            <button class="modal-close" onclick="ModalSystem.close('editStudyModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/my-schedule/constraint/edit">
+            <input type="hidden" name="employee_name" value="{{ employee_name }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="old_date" id="editStudyOldDate">
+            <input type="hidden" name="old_start_time" id="editStudyOldStart">
+            <input type="hidden" name="old_end_time" id="editStudyOldEnd">
+
+            <div class="form-group">
+                <label class="form-label">Дата</label>
+                <input type="date" name="date" id="editStudyDate" class="input" required>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Начало</label>
+                    <input type="time" name="start_time" id="editStudyStart" class="input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Окончание</label>
+                    <input type="time" name="end_time" id="editStudyEnd" class="input" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Комментарий</label>
+                <input type="text" name="note" id="editStudyNote" class="input" placeholder="Например: занятия в университете">
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary flex-1" onclick="ModalSystem.close('editStudyModal')">Отмена</button>
+                <button type="submit" class="btn btn--primary flex-1">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Preference Modal -->
+<div class="modal-backdrop" id="editPreferenceModal">
+    <div class="modal-dialog modal-scrollable">
+        <div class="modal-header">
+            <h3 class="modal-title">Редактировать пожелание</h3>
+            <button class="modal-close" onclick="ModalSystem.close('editPreferenceModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/my-schedule/preferences/edit">
+            <input type="hidden" name="employee_name" value="{{ employee_name }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="old_date" id="editPrefOldDate">
+            <input type="hidden" name="old_preference_type" id="editPrefOldType">
+
+            <div class="form-group">
+                <label class="form-label">Дата</label>
+                <input type="date" name="date" id="editPrefDate" class="input" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Тип пожелания</label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <label class="radio-card" onclick="selectEditPrefType(this, 'prefer_off')">
+                        <input type="radio" name="preference_type" value="prefer_off">
+                        <span class="radio-card__label">Не ставить</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Начало</label>
+                    <input type="time" name="start_time" id="editPrefStart" class="input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Окончание</label>
+                    <input type="time" name="end_time" id="editPrefEnd" class="input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Комментарий</label>
+                <input type="text" name="note" id="editPrefNote" class="input" placeholder="Например: важные дела">
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary flex-1" onclick="ModalSystem.close('editPreferenceModal')">Отмена</button>
+                <button type="submit" class="btn btn--primary flex-1">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Study Modal -->
+<div class="modal-backdrop" id="studyModal">
+    <div class="modal-dialog modal-scrollable wide-wide-modal">
+        <div class="modal-header modal-header--study">
+            <div class="modal-header__content">
+                <div class="modal-header__icon modal-header__icon--study">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                </div>
+                <div class="modal-header__text">
+                    <h3 class="modal-title">Добавить учёбу</h3>
+                    <p class="modal-subtitle">Укажите дни и время занятий</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="ModalSystem.close('studyModal')" aria-label="Закрыть">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" id="studyForm" onsubmit="submitStudyForm(event)">
+            <input type="hidden" name="employee_name" value="{{ employee_name }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="constraint_type" value="study">
+
+            <div class="form-group">
+                <label class="form-label">Период</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label class="radio-card selected" onclick="selectStudyPeriod(this, 'day')">
+                        <input type="radio" name="study_period_type" value="day" checked>
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span class="radio-card__label">Один день</span>
+                    </label>
+                    <label class="radio-card" onclick="selectStudyPeriod(this, 'selected_dates')">
+                        <input type="radio" name="study_period_type" value="selected_dates">
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
+                        <span class="radio-card__label">Выбрать даты</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="studyDayInputs">
+                <div class="form-group">
+                    <label class="form-label">Дата</label>
+                    <input type="date" name="date_day" id="studyDate" class="input" required>
+                </div>
+            </div>
+
+            <div id="studyDatesDateInputs" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Выберите даты в календаре</label>
+                    <div id="studyMultiDatePicker" class="multi-date-picker"></div>
+                    <p class="text-xs text-muted mt-2" id="studyDatesCount">Выбрано дней: 0</p>
+                    <input type="hidden" name="study_selected_dates" id="studyDatesHidden">
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Начало</label>
+                    <input type="time" name="start_time" id="studyStart" class="input" value="18:00" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Окончание</label>
+                    <input type="time" name="end_time" id="studyEnd" class="input" value="22:00" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Комментарий</label>
+                <input type="text" name="note" id="studyNote" class="input" placeholder="Например: занятия в университете">
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary flex-1" onclick="ModalSystem.close('studyModal')">Отмена</button>
+                <button type="submit" class="btn btn--primary flex-1">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Preference Modal (from main button - with period selection) -->
+<div class="modal-backdrop" id="preferenceModal">
+    <div class="modal-dialog modal-scrollable wide-wide-modal">
+        <div class="modal-header modal-header--preference">
+            <div class="modal-header__content">
+                <div class="modal-header__icon modal-header__icon--preference">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <div class="modal-header__text">
+                    <h3 class="modal-title">Добавить пожелания</h3>
+                    <p class="modal-subtitle">Удобные и неудобные дни</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="ModalSystem.close('preferenceModal')" aria-label="Закрыть">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" id="preferenceForm" onsubmit="submitPreferenceForm(event)">
+            <input type="hidden" name="employee_name" value="{{ employee_name }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="date" id="prefDateHidden">
+            <input type="hidden" name="time_value" id="prefTimeValueHidden">
+
+            <div class="form-group">
+                <label class="form-label">Период</label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <label class="radio-card selected" onclick="selectPeriodRadio(this, 'day')">
+                        <input type="radio" name="period_type" value="day" checked>
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span class="radio-card__label">Один день</span>
+                    </label>
+                    <label class="radio-card" onclick="selectPeriodRadio(this, 'month')">
+                        <input type="radio" name="period_type" value="month">
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span class="radio-card__label">Весь месяц</span>
+                    </label>
+                    <label class="radio-card" onclick="selectPeriodRadio(this, 'selected_dates')">
+                        <input type="radio" name="period_type" value="selected_dates">
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/></svg>
+                        <span class="radio-card__label">Выбрать даты</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="dayPeriodInputs">
+                <div class="form-group">
+                    <label class="form-label">Дата</label>
+                    <input type="date" name="date_day" id="prefDate" class="input">
+                </div>
+            </div>
+
+            <div id="selectedDatesInputs" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Выберите даты в календаре</label>
+                    <div id="multiDatePicker" class="multi-date-picker"></div>
+                    <p class="text-xs text-muted mt-2" id="selectedDatesCount">Выбрано дней: 0</p>
+                    <input type="hidden" name="selected_dates" id="selectedDatesHidden">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Тип пожелания</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="prefTypeGroup">
+                    <label class="radio-card selected" onclick="selectPrefType(this, 'prefer_off', false)">
+                        <input type="radio" name="preference_type" value="prefer_off" checked>
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        <span class="radio-card__label">Не ставить</span>
+                    </label>
+                    <label class="radio-card" onclick="selectPrefType(this, 'not_before', true)">
+                        <input type="radio" name="preference_type" value="not_before">
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                        <span class="radio-card__label">Не ставить до</span>
+                    </label>
+                    <label class="radio-card" onclick="selectPrefType(this, 'not_after', true)">
+                        <input type="radio" name="preference_type" value="not_after">
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <span class="radio-card__label">Не ставить после</span>
+                    </label>
+                    <label class="radio-card" onclick="selectPrefType(this, 'other', false)">
+                        <input type="radio" name="preference_type" value="other">
+                        <svg class="radio-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <span class="radio-card__label">Другое</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="timeInputs">
+                <div id="wholeDayCheckboxGroup" style="margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        <input type="checkbox" id="prefWholeDay" style="width: 18px; height: 18px; accent-color: var(--blue-600); cursor: pointer;" onchange="onWholeDayChange()">
+                        <span>Весь день</span>
+                    </label>
+                </div>
+                <div id="timeFields">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" id="prefStartTimeLabel">Время начала</label>
+                            <input type="time" name="start_time" id="prefStart" class="input" value="18:00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="prefEndTimeLabel">Время окончания</label>
+                            <input type="time" name="end_time" id="prefEnd" class="input" value="22:00">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="monthlyTimeInputs" style="display: none;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" id="monthlyStartTimeLabel">Время начала</label>
+                        <input type="time" name="start_time" id="prefMonthlyStart" class="input" value="08:00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" id="monthlyEndTimeLabel">Время окончания</label>
+                        <input type="time" name="end_time" id="prefMonthlyEnd" class="input" value="22:00">
+                    </div>
+                </div>
+            </div>
+
+            <div id="monthlyOtherTextInput" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Текст пожелания</label>
+                    <textarea name="other_text" id="prefMonthlyOtherText" class="input" rows="4" placeholder="Опишите ваше пожелание подробно..."></textarea>
+                </div>
+            </div>
+
+            <div id="otherTextInput" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Текст пожелания</label>
+                    <textarea name="other_text" id="prefOtherText" class="input" rows="4" placeholder="Опишите ваше пожелание подробно..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Комментарий</label>
+                <input type="text" name="note" id="prefNote" class="input" placeholder="Например: важные дела">
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary flex-1" onclick="ModalSystem.close('preferenceModal')">Отмена</button>
+                <button type="submit" class="btn btn--primary flex-1">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Simple Preference Modal (from day click - no period selection) -->
+<div class="modal-backdrop" id="simplePreferenceModal">
+    <div class="modal-dialog modal-scrollable">
+        <div class="modal-header">
+            <h3 class="modal-title">Добавить пожелание</h3>
+            <button class="modal-close" onclick="ModalSystem.close('simplePreferenceModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/my-schedule/preferences/add">
+            <input type="hidden" name="employee_name" value="{{ employee_name }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+            <input type="hidden" name="return_year" value="{{ year }}">
+
+            <div class="form-group">
+                <label class="form-label">Дата</label>
+                <input type="date" name="date" id="simplePrefDate" class="input" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Тип пожелания</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="simplePrefTypeGroup">
+                    <label class="radio-card selected" onclick="selectSimplePrefType(this, 'prefer_off')">
+                        <input type="radio" name="preference_type" value="prefer_off" checked>
+                        <span class="radio-card__label">Не ставить</span>
+                    </label>
+                    <label class="radio-card" onclick="selectSimplePrefType(this, 'not_before')">
+                        <input type="radio" name="preference_type" value="not_before">
+                        <span class="radio-card__label">Не ставить до</span>
+                    </label>
+                    <label class="radio-card" onclick="selectSimplePrefType(this, 'not_after')">
+                        <input type="radio" name="preference_type" value="not_after">
+                        <span class="radio-card__label">Не ставить после</span>
+                    </label>
+                    <label class="radio-card" onclick="selectSimplePrefType(this, 'other')">
+                        <input type="radio" name="preference_type" value="other">
+                        <span class="radio-card__label">Другое</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="simpleTimeInputs">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" id="simpleStartTimeLabel">Время начала</label>
+                        <input type="time" name="start_time" id="simplePrefStart" class="input" value="18:00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" id="simpleEndTimeLabel">Время окончания</label>
+                        <input type="time" name="end_time" id="simplePrefEnd" class="input" value="22:00">
+                    </div>
+                </div>
+            </div>
+
+            <div id="simpleOtherTextInput" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Текст пожелания</label>
+                    <textarea name="other_text" id="simplePrefOtherText" class="input" rows="4" placeholder="Опишите ваше пожелание подробно..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Комментарий</label>
+                <input type="text" name="note" id="simplePrefNote" class="input" placeholder="Например: важные дела">
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary flex-1" onclick="ModalSystem.close('simplePreferenceModal')">Отмена</button>
+                <button type="submit" class="btn btn--primary flex-1">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Import Modal -->
+<div class="modal-backdrop modal-backdrop--lg" id="bulkImportModal">
+    <div class="modal-dialog modal-scrollable import-modal-dialog">
+        <!-- Header -->
+        <div class="modal-header modal-header--import">
+            <div class="modal-header__content">
+                <div class="modal-header__icon modal-header__icon--import">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                </div>
+                <div class="modal-header__text">
+                    <h3 class="modal-title">Импорт учебных занятий</h3>
+                    <p class="modal-subtitle">Скопируйте расписание из личного кабинета</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="ModalSystem.close('bulkImportModal')" aria-label="Закрыть">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <form id="bulkImportForm" onsubmit="submitBulkImport(event)">
+            <input type="hidden" name="employee_name" value="{{ employee_name }}">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+
+            <div class="import-modal-body">
+                <div class="import-layout">
+                    <!-- LEFT: Paste Area -->
+                    <div class="import-panel">
+                        <label class="form-label" for="scheduleText">
+                            Текст расписания из личного кабинета
+                        </label>
+                        <div class="import-paste-zone">
+                            <textarea
+                                name="schedule_text"
+                                id="scheduleText"
+                                class="import-textarea"
+                                placeholder="понедельник 6 апреля 2026 г.&#10;08:30 - 10:00    Правовое регулирование...&#10;10:10 - 11:40    Правовое регулирование...&#10;вторник 7 апреля 2026 г.&#10;..."
+                                required
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Video Instruction -->
+                    <div class="import-video-panel">
+                        <label class="form-label">Инструкция</label>
+                        <div class="import-video-wrapper">
+                            <canvas class="import-video__canvas"></canvas>
+                            <video class="import-video__source" preload="auto" muted playsinline>
+                                <source src="/static/import_instruction.mp4" type="video/mp4">
+                                Ваш браузер не поддерживает воспроизведение видео.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="bulkImportResult" class="hidden mb-4" style="margin-top: 16px;"></div>
+            </div>
+
+            <!-- Footer -->
+            <div class="import-modal-footer">
+                <button type="button" class="btn btn--secondary" onclick="ModalSystem.close('bulkImportModal')">Отмена</button>
+                <button type="submit" class="btn btn--primary" id="bulkImportBtn">
+                    <span>Импорт</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="my-toast" id="toast">
+    <span class="my-toast__icon" id="toastIcon">&#x2705;</span>
+    <span id="toastMessage">Изменения сохранены</span>
+</div>
+
+<!-- Edit Monthly Preference Modal -->
+<div class="modal-backdrop" id="editMonthlyPrefModal">
+    <div class="modal-dialog modal-scrollable">
+        <div class="modal-header">
+            <h3 class="modal-title">Редактировать пожелание</h3>
+            <button class="modal-close" onclick="ModalSystem.close('editMonthlyPrefModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/my-schedule/monthly/edit">
+            <input type="hidden" name="employee_name" id="editMonthlyEmployeeName">
+            <input type="hidden" name="old_preference_type" id="editMonthlyOldType">
+            <input type="hidden" name="return_month" value="{{ month }}">
+            <input type="hidden" name="return_year" value="{{ year }}">
+
+            <div class="form-group">
+                <label class="form-label">Тип пожелания</label>
+                <select name="preference_type" id="editMonthlyType" class="input" onchange="toggleEditMonthlyTimeInput()">
+                    <option value="prefer_off">Не ставить</option>
+                    <option value="not_before">Не ставить до</option>
+                    <option value="not_after">Не ставить после</option>
+                    <option value="other">Другое</option>
+                </select>
+            </div>
+
+            <div id="editMonthlyTimeInputGroup" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Время</label>
+                    <input type="time" name="time_value" id="editMonthlyTimeValue" class="input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Текст пожелания</label>
+                <textarea name="note" id="editMonthlyNote" class="input" rows="4"></textarea>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary flex-1" onclick="ModalSystem.close('editMonthlyPrefModal')">Отмена</button>
+                <button type="submit" class="btn btn--primary flex-1">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-backdrop" id="deleteConfirmModal">
+    <div class="modal-dialog" style="width: min(400px, 100%);">
+        <div class="modal-header">
+            <h3 class="modal-title">Подтверждение удаления</h3>
+            <button class="modal-close" onclick="closeDeleteModal()" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <p id="deleteConfirmMessage" style="color: var(--gray-600); margin: 0 0 20px 0; font-size: 15px; line-height: 1.5;"></p>
+
+            <input type="hidden" id="deleteType">
+            <input type="hidden" id="deleteDate">
+            <input type="hidden" id="deleteStartTime">
+            <input type="hidden" id="deleteEndTime">
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn--secondary flex-1" onclick="closeDeleteModal()">Отмена</button>
+            <button type="button" class="btn btn--danger flex-1" onclick="confirmDelete()">Удалить</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Move all modals to <body> so they are not affected by parent containers with transform/animation
+document.addEventListener('DOMContentLoaded', function() {
+    var body = document.body;
+    document.querySelectorAll('.modal-backdrop').forEach(function(modal) {
+        body.appendChild(modal);
+    });
+    var originalOpen = ModalSystem.open;
+    ModalSystem.open = function(id) {
+        var el = typeof id === 'string' ? document.getElementById(id) : id;
+        if (!el) return;
+        if (el.parentElement !== body) {
+            body.appendChild(el);
+        }
+        el.style.position = 'fixed';
+        el.style.top = '0';
+        el.style.right = '0';
+        el.style.bottom = '0';
+        el.style.left = '0';
+        el.style.width = '100vw';
+        el.style.height = '100vh';
+        el.style.zIndex = '1000';
+        originalOpen.call(ModalSystem, id);
+    };
+});
+
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+function escAttr(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+const calendarData = {{ calendar_days|tojson }};
+const employeeName = "{{ employee_name }}";
+const currentMonth = {{ month }};
+const currentYear = {{ year }};
+
+// Check for flash messages on page load
+{% if request.session.get('flash_success') %}
+showToast("{{ request.session.get('flash_success') }}", 'success');
+{% set _ = request.session.pop('flash_success') %}
+{% endif %}
+{% if request.session.get('flash_error') %}
+showToast("{{ request.session.get('flash_error') }}", 'error');
+{% set _ = request.session.pop('flash_error') %}
+{% endif %}
+
+function openDayModal(dateIso, day, dateStr) {
+    document.getElementById('selectedDate').value = dateIso;
+    const [year, month, dayNum] = dateIso.split('-');
+    const dateFormatted = `${dayNum}.${month}.${year}`;
+    document.getElementById('dayModalTitle').textContent = dateFormatted;
+
+    const dayData = calendarData.find(d => d.date === dateIso);
+    const listDiv = document.getElementById('dayConstraintsList');
+
+    let allEvents = [];
+
+    // Vacations
+    if (dayData && dayData.vacations && dayData.vacations.length > 0) {
+        dayData.vacations.forEach(v => {
+            allEvents.push({
+                type: 'vacation',
+                time: '00:00',
+                html: `
+                    <div class="constraint-item constraint-item--vacation">
+                        <div class="constraint-item__time constraint-item__time--green">Отпуск</div>
+                        ${v.note ? `<div class="constraint-item__note">${v.note}</div>` : ''}
+                        <div class="constraint-item__actions">
+                            <span class="text-xs text-muted">Записано в отпуске</span>
+                        </div>
+                    </div>
+                `
+            });
+        });
+    }
+
+    // Shifts
+    if (dayData && dayData.shifts && dayData.shifts.length > 0) {
+        dayData.shifts.forEach(s => {
+            allEvents.push({
+                type: 'shift',
+                time: s.start_time,
+                html: `
+                    <div class="constraint-item constraint-item--shift">
+                        <div class="constraint-item__time constraint-item__time--red">${s.start_time} - ${s.end_time}</div>
+                        ${s.note ? `<div class="constraint-item__note">${s.note}</div>` : ''}
+                        <div class="constraint-item__actions">
+                            <span class="text-xs text-muted">Смена в графике</span>
+                        </div>
+                    </div>
+                `
+            });
+        });
+    }
+
+    // Unavailable (study)
+    if (dayData && dayData.unavailable && dayData.unavailable.length > 0) {
+        dayData.unavailable.forEach(u => {
+            allEvents.push({
+                type: 'study',
+                time: u.start_time,
+                html: `
+                    <div class="constraint-item constraint-item--study">
+                        <div class="constraint-item__time constraint-item__time--blue">${u.start_time} - ${u.end_time}</div>
+                        ${u.note ? `<div class="constraint-item__note">${u.note}</div>` : ''}
+                        <div class="constraint-item__actions">
+                            <button class="constraint-item__btn constraint-item__btn--edit" onclick="editStudy('${u.date}', '${u.start_time}', '${u.end_time}', '${escAttr(u.note) || ''}')">Редактировать</button>
+                            <button class="constraint-item__btn constraint-item__btn--delete" onclick="deleteConstraint('study', '${u.date}', '${u.start_time}', '${u.end_time}')">Удалить</button>
+                        </div>
+                    </div>
+                `
+            });
+        });
+    }
+
+    // Preferences
+    if (dayData && dayData.preferences && dayData.preferences.length > 0) {
+        dayData.preferences.forEach(p => {
+            let html = '';
+            let timeForSort = '00:00';
+
+            if (p.preference_type === 'prefer_off') {
+                const hasTime = p.start_time && p.end_time;
+                timeForSort = hasTime ? p.start_time : '00:00';
+                html = `
+                    <div class="constraint-item constraint-item--pref">
+                        <div class="constraint-item__time constraint-item__time--orange">
+                            Не ставить${hasTime ? ` ${p.start_time}-${p.end_time}` : ''}
+                        </div>
+                        ${p.note ? `<div class="constraint-item__note">${p.note}</div>` : ''}
+                        <div class="constraint-item__actions">
+                            <button class="constraint-item__btn constraint-item__btn--edit" onclick="editPreference('${p.date}', '${p.preference_type}', '${p.start_time || ''}', '${p.end_time || ''}', '${escAttr(p.note) || ''}')">Редактировать</button>
+                            <button class="constraint-item__btn constraint-item__btn--delete" onclick="deleteConstraint('${p.preference_type}', '${p.date}')">Удалить</button>
+                        </div>
+                    </div>
+                `;
+            } else if (p.preference_type === 'not_before') {
+                const timeVal = p.end_time || p.start_time || '00:00';
+                timeForSort = timeVal;
+                html = `
+                    <div class="constraint-item constraint-item--pref">
+                        <div class="constraint-item__time constraint-item__time--orange">
+                            Не ставить до ${timeVal}
+                        </div>
+                        ${p.note ? `<div class="constraint-item__note">${p.note}</div>` : ''}
+                        <div class="constraint-item__actions">
+                            <button class="constraint-item__btn constraint-item__btn--edit" onclick="editPreference('${p.date}', '${p.preference_type}', '${p.start_time || ''}', '${p.end_time || ''}', '${escAttr(p.note) || ''}')">Редактировать</button>
+                            <button class="constraint-item__btn constraint-item__btn--delete" onclick="deleteConstraint('${p.preference_type}', '${p.date}')">Удалить</button>
+                        </div>
+                    </div>
+                `;
+            } else if (p.preference_type === 'not_after') {
+                const timeVal = p.start_time || '00:00';
+                timeForSort = timeVal;
+                html = `
+                    <div class="constraint-item constraint-item--pref">
+                        <div class="constraint-item__time constraint-item__time--orange">
+                            Не ставить после ${timeVal}
+                        </div>
+                        ${p.note ? `<div class="constraint-item__note">${p.note}</div>` : ''}
+                        <div class="constraint-item__actions">
+                            <button class="constraint-item__btn constraint-item__btn--edit" onclick="editPreference('${p.date}', '${p.preference_type}', '${p.start_time || ''}', '${p.end_time || ''}', '${escAttr(p.note) || ''}')">Редактировать</button>
+                            <button class="constraint-item__btn constraint-item__btn--delete" onclick="deleteConstraint('${p.preference_type}', '${p.date}')">Удалить</button>
+                        </div>
+                    </div>
+                `;
+            } else if (p.preference_type === 'other') {
+                timeForSort = '00:00';
+                html = `
+                    <div class="constraint-item constraint-item--other">
+                        <div class="constraint-item__time constraint-item__time--purple">
+                            ${escHtml(p.note) || 'Другое пожелание'}
+                        </div>
+                        <div class="constraint-item__actions">
+                            <button class="constraint-item__btn constraint-item__btn--edit" onclick="editPreference('${p.date}', '${p.preference_type}', '', '', '${escAttr(p.note) || ''}')">Редактировать</button>
+                            <button class="constraint-item__btn constraint-item__btn--delete" onclick="deleteConstraint('${p.preference_type}', '${p.date}')">Удалить</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (html) {
+                allEvents.push({
+                    type: 'preference',
+                    time: timeForSort,
+                    html: html
+                });
+            }
+        });
+    }
+
+    const priority = { 'shift': 1, 'vacation': 2, 'study': 3, 'preference': 4 };
+    allEvents.sort((a, b) => {
+        const priorityDiff = priority[a.type] - priority[b.type];
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.time.localeCompare(b.time);
+    });
+
+    let html = allEvents.map(e => e.html).join('');
+
+    if (!html) {
+        html = '<p class="text-center text-muted text-sm" style="padding: 32px 0;">Нет записей на этот день</p>';
+    }
+
+    listDiv.innerHTML = html;
+    ModalSystem.open('dayModal');
+}
+
+let studySelectedDatesSet = new Set();
+
+function showStudyModal() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('studyDate').value = today;
+    studySelectedDatesSet.clear();
+    // Reset to day mode
+    document.querySelectorAll('input[name="study_period_type"]').forEach(r => r.checked = false);
+    document.querySelector('input[name="study_period_type"][value="day"]').checked = true;
+    document.getElementById('studyDayInputs').style.display = '';
+    document.getElementById('studyDatesDateInputs').style.display = 'none';
+    ModalSystem.open('studyModal');
+    renderStudyMultiDatePicker();
+}
+
+function selectStudyPeriod(labelEl, periodType) {
+    // Remove selected class from sibling cards
+    labelEl.parentElement.querySelectorAll('.radio-card').forEach(card => card.classList.remove('selected'));
+    labelEl.classList.add('selected');
+    // Update radio inputs
+    labelEl.querySelector('input').checked = true;
+    document.getElementById('studyDayInputs').style.display = periodType === 'day' ? '' : 'none';
+    document.getElementById('studyDatesDateInputs').style.display = periodType === 'selected_dates' ? '' : 'none';
+    if (periodType === 'selected_dates') {
+        renderStudyMultiDatePicker();
+    }
+}
+
+function renderStudyMultiDatePicker() {
+    const container = document.getElementById('studyMultiDatePicker');
+    if (!container) return;
+
+    const year = currentYear;
+    const month = currentMonth;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    container.innerHTML = '';
+
+    const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    dayNames.forEach(day => {
+        const header = document.createElement('div');
+        header.className = 'date-picker-header';
+        header.textContent = day;
+        container.appendChild(header);
+    });
+
+    const firstDay = new Date(year, month - 1, 1).getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+
+    for (let i = 0; i < offset; i++) {
+        const empty = document.createElement('div');
+        container.appendChild(empty);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement('div');
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isSelected = studySelectedDatesSet.has(dateStr);
+
+        cell.className = `date-picker-cell${isSelected ? ' selected' : ''}`;
+        cell.textContent = day;
+        cell.onclick = () => toggleStudyDateSelection(dateStr);
+
+        container.appendChild(cell);
+    }
+
+    updateStudyDatesCount();
+}
+
+function toggleStudyDateSelection(dateStr) {
+    if (studySelectedDatesSet.has(dateStr)) {
+        studySelectedDatesSet.delete(dateStr);
+    } else {
+        studySelectedDatesSet.add(dateStr);
+    }
+    renderStudyMultiDatePicker();
+}
+
+function updateStudyDatesCount() {
+    const countEl = document.getElementById('studyDatesCount');
+    const hiddenInput = document.getElementById('studyDatesHidden');
+    if (countEl) {
+        countEl.textContent = `Выбрано дней: ${studySelectedDatesSet.size}`;
+    }
+    if (hiddenInput) {
+        hiddenInput.value = Array.from(studySelectedDatesSet).join(',');
+    }
+}
+
+function submitStudyForm(event) {
+    const periodType = document.querySelector('input[name="study_period_type"]:checked');
+    const isSelectedDates = periodType && periodType.value === 'selected_dates';
+
+    if (isSelectedDates) {
+        updateStudyDatesCount();
+        if (studySelectedDatesSet.size === 0) {
+            alert('Выберите хотя бы одну дату');
+            event.preventDefault();
+            return false;
+        }
+        event.preventDefault();
+        const form = document.getElementById('studyForm');
+        form.action = '/my-schedule/study/add-bulk';
+        form.method = 'POST';
+        setTimeout(() => form.submit(), 0);
+        return false;
+    } else {
+        event.preventDefault();
+        const form = document.getElementById('studyForm');
+        const singleDate = document.getElementById('studyDate').value;
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'date';
+        hiddenInput.value = singleDate;
+        form.appendChild(hiddenInput);
+        form.action = '/my-schedule/constraint/add';
+        form.method = 'POST';
+        setTimeout(() => form.submit(), 0);
+        return false;
+    }
+}
+
+function showPreferenceModal() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('prefDate').value = today;
+    ModalSystem.open('preferenceModal');
+    updatePreferenceForm();
+    renderMultiDatePicker();
+}
+
+function selectPeriodRadio(element, periodType) {
+    const parent = element.parentElement;
+    parent.querySelectorAll('.radio-card').forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+
+    const input = element.querySelector('input');
+    input.checked = true;
+
+    updatePreferenceForm();
+}
+
+function selectPrefType(element, prefType, needsTime) {
+    const parent = element.parentElement;
+    parent.querySelectorAll('.radio-card').forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+
+    const input = element.querySelector('input');
+    input.checked = true;
+
+    updatePreferenceForm();
+}
+
+function updatePreferenceForm() {
+    const periodType = document.querySelector('input[name="period_type"]:checked');
+    const dayInputs = document.getElementById('dayPeriodInputs');
+    const monthlyInputs = document.getElementById('monthlyTimeInputs');
+    const monthlyOtherTextInput = document.getElementById('monthlyOtherTextInput');
+    const timeInputs = document.getElementById('timeInputs');
+    const selectedDatesInputs = document.getElementById('selectedDatesInputs');
+    const prefType = document.querySelector('input[name="preference_type"]:checked');
+    const startTimeLabel = document.getElementById('prefStartTimeLabel');
+    const endTimeLabel = document.getElementById('prefEndTimeLabel');
+    const otherTextInput = document.getElementById('otherTextInput');
+
+    const isMonthly = periodType && periodType.value === 'month';
+    const isSelectedDates = periodType && periodType.value === 'selected_dates';
+    const isNotBeforeOrAfter = prefType && (prefType.value === 'not_before' || prefType.value === 'not_after');
+    const isOther = prefType && prefType.value === 'other';
+
+    startTimeLabel.textContent = 'Время начала';
+    endTimeLabel.textContent = 'Время окончания';
+
+    if (isMonthly) {
+        dayInputs.style.display = 'none';
+        selectedDatesInputs.style.display = 'none';
+        document.getElementById('prefDate').required = false;
+        if (isOther) {
+            monthlyInputs.style.display = 'none';
+            monthlyOtherTextInput.style.display = 'block';
+        } else {
+            monthlyInputs.style.display = 'block';
+            monthlyOtherTextInput.style.display = 'none';
+        }
+        timeInputs.style.display = 'none';
+        otherTextInput.style.display = 'none';
+        document.getElementById('wholeDayCheckboxGroup').style.display = 'none';
+    } else if (isSelectedDates) {
+        dayInputs.style.display = 'none';
+        monthlyInputs.style.display = 'none';
+        timeInputs.style.display = 'block';
+        selectedDatesInputs.style.display = 'block';
+        otherTextInput.style.display = 'none';
+        document.getElementById('wholeDayCheckboxGroup').style.display = 'none';
+        renderMultiDatePicker();
+    } else {
+        dayInputs.style.display = 'block';
+        selectedDatesInputs.style.display = 'none';
+        document.getElementById('prefDate').required = true;
+        monthlyInputs.style.display = 'none';
+
+        if (isOther) {
+            timeInputs.style.display = 'none';
+            otherTextInput.style.display = 'block';
+            document.getElementById('wholeDayCheckboxGroup').style.display = 'none';
+        } else {
+            timeInputs.style.display = 'block';
+            otherTextInput.style.display = 'none';
+            document.getElementById('wholeDayCheckboxGroup').style.display = 'none';
+        }
+    }
+
+    // "Весь день" checkbox only visible for "prefer_off" (not_before/not_after never show it)
+    const isPreferOff = prefType && prefType.value === 'prefer_off';
+    const showWholeDay = isPreferOff && !isMonthly && (periodType.value === 'selected_dates' || periodType.value === 'day');
+    document.getElementById('wholeDayCheckboxGroup').style.display = showWholeDay ? 'block' : 'none';
+
+    if (isNotBeforeOrAfter) {
+        if (prefType.value === 'not_before') {
+            startTimeLabel.parentElement.style.display = 'none';
+            document.getElementById('prefStart').required = false;
+            endTimeLabel.parentElement.style.display = 'block';
+            endTimeLabel.textContent = 'Окончание';
+            document.getElementById('prefEnd').required = true;
+        } else if (prefType.value === 'not_after') {
+            startTimeLabel.parentElement.style.display = 'block';
+            startTimeLabel.textContent = 'Начало';
+            document.getElementById('prefStart').required = true;
+            endTimeLabel.parentElement.style.display = 'none';
+            document.getElementById('prefEnd').required = false;
+        }
+    } else if (!isOther) {
+        startTimeLabel.parentElement.style.display = 'block';
+        document.getElementById('prefStart').style.display = 'block';
+        endTimeLabel.parentElement.style.display = 'block';
+        document.getElementById('prefEnd').style.display = 'block';
+        document.getElementById('prefStart').required = false;
+        document.getElementById('prefEnd').required = false;
+    }
+}
+
+function onWholeDayChange() {
+    document.getElementById('timeFields').style.display = document.getElementById('prefWholeDay').checked ? 'none' : '';
+}
+
+let selectedDatesSet = new Set();
+
+function renderMultiDatePicker() {
+    const container = document.getElementById('multiDatePicker');
+    if (!container) return;
+
+    const year = currentYear;
+    const month = currentMonth;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    container.innerHTML = '';
+
+    const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    dayNames.forEach(day => {
+        const header = document.createElement('div');
+        header.className = 'date-picker-header';
+        header.textContent = day;
+        container.appendChild(header);
+    });
+
+    const firstDay = new Date(year, month - 1, 1).getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+
+    for (let i = 0; i < offset; i++) {
+        const empty = document.createElement('div');
+        container.appendChild(empty);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement('div');
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isSelected = selectedDatesSet.has(dateStr);
+
+        cell.className = `date-picker-cell${isSelected ? ' selected' : ''}`;
+        cell.textContent = day;
+        cell.onclick = () => toggleDateSelection(dateStr);
+
+        container.appendChild(cell);
+    }
+
+    updateSelectedDatesCount();
+}
+
+function toggleDateSelection(dateStr) {
+    if (selectedDatesSet.has(dateStr)) {
+        selectedDatesSet.delete(dateStr);
+    } else {
+        selectedDatesSet.add(dateStr);
+    }
+    renderMultiDatePicker();
+}
+
+function updateSelectedDatesCount() {
+    const countEl = document.getElementById('selectedDatesCount');
+    const hiddenInput = document.getElementById('selectedDatesHidden');
+    if (countEl) {
+        countEl.textContent = `Выбрано дней: ${selectedDatesSet.size}`;
+    }
+    if (hiddenInput) {
+        hiddenInput.value = Array.from(selectedDatesSet).join(',');
+    }
+}
+
+function submitPreferenceForm(event) {
+    const periodType = document.querySelector('input[name="period_type"]:checked');
+    const prefType = document.querySelector('input[name="preference_type"]:checked');
+    const isMonthly = periodType && periodType.value === 'month';
+    const isSelectedDates = periodType && periodType.value === 'selected_dates';
+    const isOther = prefType && prefType.value === 'other';
+
+    if (isMonthly) {
+        event.preventDefault();
+        if (isOther) {
+            document.getElementById('prefNote').value = document.getElementById('prefMonthlyOtherText').value || '';
+        } else {
+            document.getElementById('prefNote').value = document.getElementById('prefMonthlyStart').value + '-' + document.getElementById('prefMonthlyEnd').value;
+        }
+        document.getElementById('preferenceForm').action = '/my-schedule/monthly/add';
+        document.getElementById('preferenceForm').method = 'POST';
+        setTimeout(() => document.getElementById('preferenceForm').submit(), 0);
+        return false;
+    } else if (isSelectedDates) {
+        updateSelectedDatesCount();
+
+        if (selectedDatesSet.size === 0) {
+            alert('Выберите хотя бы одну дату');
+            event.preventDefault();
+            return false;
+        }
+        event.preventDefault();
+        document.getElementById('preferenceForm').action = '/my-schedule/preferences/add-bulk';
+        document.getElementById('preferenceForm').method = 'POST';
+        setTimeout(() => document.getElementById('preferenceForm').submit(), 0);
+        return false;
+    } else {
+        document.getElementById('prefDateHidden').value = document.getElementById('prefDate').value;
+        document.getElementById('preferenceForm').action = '/my-schedule/preferences/add';
+        return true;
+    }
+}
+
+let deleteData = {};
+
+function showDeleteConfirm(type, date, startTime, endTime, customMessage) {
+    deleteData = { type, date, startTime, endTime };
+
+    const [year, month, day] = date.split('-');
+    const dateFormatted = `${day}.${month}.${year}`;
+
+    let message = customMessage || `Удалить запись на ${dateFormatted}?`;
+
+    if (type === 'study') {
+        message = `Удалить учебное занятие на ${dateFormatted} (${startTime} - ${endTime})?`;
+    } else if (type === 'prefer_off') {
+        message = `Удалить пожелание «Не ставить» на ${dateFormatted}?`;
+    } else if (type === 'not_before') {
+        message = `Удалить пожелание «Не ставить до» на ${dateFormatted}?`;
+    } else if (type === 'not_after') {
+        message = `Удалить пожелание «Не ставить после» на ${dateFormatted}?`;
+    } else if (type === 'other') {
+        message = `Удалить пожелание «Другое» на ${dateFormatted}?`;
+    }
+
+    document.getElementById('deleteConfirmMessage').textContent = message;
+    ModalSystem.open('deleteConfirmModal');
+}
+
+function closeDeleteModal() {
+    ModalSystem.close('deleteConfirmModal');
+    deleteData = {};
+}
+
+function confirmDelete() {
+    if (deleteData.type === 'monthly_preference') {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/my-schedule/monthly/delete';
+
+        const addField = (name, value) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = String(name);
+            input.value = String(value || '');
+            form.appendChild(input);
+        };
+        addField('employee_name', deleteData.empName || employeeName);
+        addField('preference_type', deleteData.prefType);
+        addField('return_month', currentMonth);
+        addField('return_year', currentYear);
+
+        document.body.appendChild(form);
+        form.submit();
+        return;
+    }
+
+    const { type, date, startTime, endTime } = deleteData;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+
+    if (type === 'study') {
+        form.action = '/my-schedule/constraint/delete';
+        form.innerHTML = `
+            <input type="hidden" name="employee_name" value="${employeeName}">
+            <input type="hidden" name="date" value="${date}">
+            <input type="hidden" name="start_time" value="${startTime}">
+            <input type="hidden" name="end_time" value="${endTime}">
+            <input type="hidden" name="return_month" value="${currentMonth}">
+            <input type="hidden" name="return_year" value="${currentYear}">
+        `;
+    } else {
+        form.action = '/my-schedule/preferences/delete';
+        form.innerHTML = `
+            <input type="hidden" name="employee_name" value="${employeeName}">
+            <input type="hidden" name="date" value="${date}">
+            <input type="hidden" name="preference_type" value="${type}">
+            <input type="hidden" name="return_month" value="${currentMonth}">
+            <input type="hidden" name="return_year" value="${currentYear}">
+        `;
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function deleteConstraint(type, date, startTime, endTime) {
+    showDeleteConfirm(type, date, startTime, endTime);
+}
+
+function showAddFromDayModal() {
+    ModalSystem.open('addChoiceModal');
+}
+
+function showStudyModalForDate() {
+    const selectedDate = document.getElementById('selectedDate').value;
+    document.getElementById('studyDate').value = selectedDate;
+    ModalSystem.open('studyModal');
+}
+
+function showPreferenceModalForDate() {
+    const selectedDate = document.getElementById('selectedDate').value;
+    document.getElementById('simplePrefDate').value = selectedDate;
+    ModalSystem.open('simplePreferenceModal');
+    updateSimplePreferenceForm();
+}
+
+function editStudy(date, startTime, endTime, note) {
+    document.getElementById('editStudyOldDate').value = date;
+    document.getElementById('editStudyOldStart').value = startTime;
+    document.getElementById('editStudyOldEnd').value = endTime;
+    document.getElementById('editStudyDate').value = date;
+    document.getElementById('editStudyStart').value = startTime;
+    document.getElementById('editStudyEnd').value = endTime;
+    document.getElementById('editStudyNote').value = note || '';
+    ModalSystem.open('editStudyModal');
+}
+
+function editPreference(date, preferenceType, startTime, endTime, note) {
+    document.getElementById('editPrefOldDate').value = date;
+    document.getElementById('editPrefOldType').value = preferenceType;
+    document.getElementById('editPrefDate').value = date;
+    document.getElementById('editPrefStart').value = startTime || '';
+    document.getElementById('editPrefEnd').value = endTime || '';
+    document.getElementById('editPrefNote').value = note || '';
+
+    const radioOptions = document.querySelectorAll('#editPreferenceModal input[name="preference_type"]');
+    radioOptions.forEach(radio => {
+        if (radio.value === preferenceType) {
+            radio.checked = true;
+            radio.parentElement.classList.add('selected');
+        } else {
+            radio.parentElement.classList.remove('selected');
+        }
+    });
+
+    ModalSystem.open('editPreferenceModal');
+}
+
+function selectEditPrefType(element, prefType) {
+    const parent = element.parentElement;
+    parent.querySelectorAll('.radio-card').forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+
+    const input = element.querySelector('input');
+    input.checked = true;
+}
+
+function selectSimplePrefType(element, prefType) {
+    const parent = element.parentElement;
+    parent.querySelectorAll('.radio-card').forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+
+    const input = element.querySelector('input');
+    input.checked = true;
+
+    updateSimplePreferenceForm();
+}
+
+function updateSimplePreferenceForm() {
+    const prefType = document.querySelector('#simplePrefTypeGroup input[name="preference_type"]:checked');
+    const startTimeLabel = document.getElementById('simpleStartTimeLabel');
+    const endTimeLabel = document.getElementById('simpleEndTimeLabel');
+    const simpleTimeInputs = document.getElementById('simpleTimeInputs');
+    const simpleOtherTextInput = document.getElementById('simpleOtherTextInput');
+
+    startTimeLabel.textContent = 'Время начала';
+    endTimeLabel.textContent = 'Время окончания';
+
+    const isNotBeforeOrAfter = prefType && (prefType.value === 'not_before' || prefType.value === 'not_after');
+    const isOther = prefType && prefType.value === 'other';
+
+    if (isOther) {
+        simpleTimeInputs.style.display = 'none';
+        simpleOtherTextInput.style.display = 'block';
+    } else {
+        simpleTimeInputs.style.display = 'grid';
+        simpleOtherTextInput.style.display = 'none';
+    }
+
+    if (isNotBeforeOrAfter) {
+        if (prefType.value === 'not_before') {
+            startTimeLabel.parentElement.style.display = 'none';
+            document.getElementById('simplePrefStart').required = false;
+            endTimeLabel.parentElement.style.display = 'block';
+            endTimeLabel.textContent = 'Окончание';
+            document.getElementById('simplePrefEnd').required = true;
+        } else if (prefType.value === 'not_after') {
+            startTimeLabel.parentElement.style.display = 'block';
+            startTimeLabel.textContent = 'Начало';
+            document.getElementById('simplePrefStart').required = true;
+            endTimeLabel.parentElement.style.display = 'none';
+            document.getElementById('simplePrefEnd').required = false;
+        }
+    } else if (!isOther) {
+        startTimeLabel.parentElement.style.display = 'block';
+        document.getElementById('simplePrefStart').style.display = 'block';
+        endTimeLabel.parentElement.style.display = 'block';
+        document.getElementById('simplePrefEnd').style.display = 'block';
+        document.getElementById('simplePrefStart').required = false;
+        document.getElementById('simplePrefEnd').required = false;
+    }
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const icon = document.getElementById('toastIcon');
+    const msg = document.getElementById('toastMessage');
+
+    icon.textContent = type === 'success' ? '\u2705' : type === 'error' ? '\u274c' : '\u2139\ufe0f';
+    msg.textContent = message;
+
+    toast.style.display = 'flex';
+
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
+
+function showBulkImportModal() {
+    ModalSystem.open('bulkImportModal');
+    document.getElementById('bulkImportResult').classList.add('hidden');
+
+    var video = document.querySelector('#bulkImportModal .import-video__source');
+    var canvas = document.querySelector('#bulkImportModal .import-video__canvas');
+    if (video && canvas) {
+        video.currentTime = 0;
+        initVideoPlayback(video, canvas);
+        setTimeout(function () {
+            video.play().catch(function() {});
+        }, 200);
+    }
+}
+
+function initVideoPlayback(video, canvas) {
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    var rafId = null;
+
+    function syncSize() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    }
+
+    function drawLoop() {
+        if (video.readyState >= 2) {
+            syncSize();
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        }
+        rafId = requestAnimationFrame(drawLoop);
+    }
+
+    function onPlay() {
+        if (!rafId) drawLoop();
+    }
+
+    function onPause() {
+        // Draw last frame
+        syncSize();
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    }
+
+    // Clean previous
+    if (video.__canvasCleanup) video.__canvasCleanup();
+
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+    video.addEventListener('ended', onPause);
+    canvas.addEventListener('click', function () {
+        if (video.paused) video.play().catch(function() {});
+        else video.pause();
+    });
+
+    // Initial frame
+    video.addEventListener('loadeddata', function () {
+        syncSize();
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    });
+
+    video.__canvasCleanup = function () {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
+        video.removeEventListener('play', onPlay);
+        video.removeEventListener('pause', onPause);
+        video.removeEventListener('ended', onPause);
+    };
+
+    syncSize();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('bulkImportModal');
+    if (!modal) return;
+    var video = modal.querySelector('.import-video__source');
+    var canvas = modal.querySelector('.import-video__canvas');
+    if (video && canvas) initVideoPlayback(video, canvas);
+});
+
+function submitBulkImport(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('bulkImportForm');
+    const formData = new FormData(form);
+    const btn = document.getElementById('bulkImportBtn');
+    const resultDiv = document.getElementById('bulkImportResult');
+
+    console.log('Form data:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value.substring(0, 50)}...`);
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="border-top-color:white;border-color:rgba(255,255,255,0.3);"></span> Обработка...';
+    resultDiv.classList.remove('hidden');
+    resultDiv.innerHTML = '<div style="text-align:center;color:var(--gray-400);font-size:0.875rem;padding:12px;">Обработка...</div>';
+
+    fetch('/constraints/bulk-import', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <span class="alert-icon" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </span>
+                    <span>${data.message}
+                    ${data.warnings && data.warnings.length > 0 ? '<br><small>' + data.warnings.join('<br>') + '</small>' : ''}</span>
+                </div>
+            `;
+            btn.innerHTML = 'Импорт';
+            ModalSystem.close('bulkImportModal');
+            location.reload();
+        } else {
+            let debugInfo = '';
+            if (data.debug_first_line) {
+                debugInfo = `<br><small style="color: var(--gray-600);">Debug: ${data.debug_first_line} (строк: ${data.debug_lines || 0})</small>`;
+            }
+            resultDiv.innerHTML = `
+                <div class="alert alert-error">
+                    <span class="alert-icon" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    </span>
+                    <span>${data.error || 'Ошибка импорта'}
+                    ${data.warnings ? '<br><small>' + data.warnings.join('<br>') + '</small>' : ''}
+                    ${debugInfo}</span>
+                </div>
+            `;
+            btn.disabled = false;
+            btn.innerHTML = 'Импорт';
+        }
+    })
+    .catch(error => {
+        resultDiv.innerHTML = `
+            <div class="alert alert-error">
+                <span class="alert-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                </span>
+                <span>Ошибка: ${error.message}</span>
+            </div>
+        `;
+        btn.disabled = false;
+        btn.innerHTML = 'Импорт';
+    });
+}
+
+// Form submission handler
+document.getElementById('addForm').addEventListener('submit', function(e) {
+    const type = document.querySelector('input[name="constraint_type"]:checked').value;
+
+    if (type === 'study') {
+        this.action = '/my-schedule/constraint/add';
+    } else {
+        this.action = '/my-schedule/preference/add';
+        let prefTypeField = this.querySelector('input[name="preference_type"]');
+        if (!prefTypeField) {
+            prefTypeField = document.createElement('input');
+            prefTypeField.type = 'hidden';
+            prefTypeField.name = 'preference_type';
+            this.appendChild(prefTypeField);
+        }
+        prefTypeField.value = type;
+    }
+});
+
+function showEditMonthlyPrefConfirm(employeeName, preferenceType, timeValue, note) {
+    document.getElementById('editMonthlyEmployeeName').value = employeeName;
+    document.getElementById('editMonthlyOldType').value = preferenceType;
+    document.getElementById('editMonthlyType').value = preferenceType;
+    document.getElementById('editMonthlyNote').value = note || '';
+
+    toggleEditMonthlyTimeInput();
+
+    if (timeValue) {
+        document.getElementById('editMonthlyTimeValue').value = timeValue;
+    }
+
+    ModalSystem.open('editMonthlyPrefModal');
+}
+
+function toggleEditMonthlyTimeInput() {
+    const prefType = document.getElementById('editMonthlyType').value;
+    const timeInputGroup = document.getElementById('editMonthlyTimeInputGroup');
+
+    if (prefType === 'not_before' || prefType === 'not_after') {
+        timeInputGroup.style.display = 'block';
+    } else {
+        timeInputGroup.style.display = 'none';
+    }
+}
+
+function showDeleteMonthlyPrefConfirm(employeeName, preferenceType) {
+    const typeNames = {
+        'prefer_off': 'Не ставить (весь месяц)',
+        'not_before': 'Не ставить до (весь месяц)',
+        'not_after': 'Не ставить после (весь месяц)',
+        'other': 'Другое пожелание (весь месяц)'
+    };
+    const message = `Удалить пожелание «${typeNames[preferenceType] || preferenceType || 'на месяц'}»?`;
+
+    document.getElementById('deleteConfirmMessage').textContent = message;
+
+    deleteData = {
+        type: 'monthly_preference',
+        empName: employeeName,
+        prefType: preferenceType
+    };
+
+    ModalSystem.open('deleteConfirmModal');
+}
+
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base_new.html" %}
+
+{% block title %}Настройки — ЕКЦ График{% endblock %}
+{% block page_title %}Настройки{% endblock %}
+{% block page_subtitle %}Параметры системы{% endblock %}
+
+{% block content %}
+
+<div class="page">
+
+    <!-- App Settings Card -->
+    <div class="card">
+        <div class="section-head mb-4">
+            <div>
+                <h2 class="section-head__title">Планировщик</h2>
+                <p class="section-head__desc">Основные параметры системы</p>
+            </div>
+        </div>
+
+        <form method="POST" action="/settings" class="space-y-3">
+            <!-- Autosave Toggle -->
+            <div class="settings-row">
+                <div class="settings-row__info">
+                    <span class="settings-row__label">Автосохранение</span>
+                    <span class="settings-row__desc">Автоматически сохранять изменения при редактировании</span>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="autosave_enabled"
+                           {% if autosave_enabled %}checked{% endif %}>
+                    <span class="toggle__track"></span>
+                </label>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <!-- Notifications Toggle -->
+            <div class="settings-row">
+                <div class="settings-row__info">
+                    <span class="settings-row__label">Уведомления</span>
+                    <span class="settings-row__desc">Показывать уведомления об изменениях в расписании</span>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="notifications_enabled"
+                           {% if notifications_enabled %}checked{% endif %}>
+                    <span class="toggle__track"></span>
+                </label>
+            </div>
+
+            <div class="mt-6">
+                <button type="submit" class="btn btn--primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- About Card -->
+    <div class="card card--quiet">
+        <div class="section-head mb-4">
+            <div>
+                <h2 class="section-head__title">О системе</h2>
+            </div>
+        </div>
+        <div class="about-grid">
+            <div class="about-item">
+                <span class="about-item__label">Продукт</span>
+                <span class="about-item__value">ЕКЦ График — планировщик смен</span>
+            </div>
+            <div class="about-item">
+                <span class="about-item__label">Версия</span>
+                <span class="about-item__value">2.0</span>
+            </div>
+            <div class="about-item">
+                <span class="about-item__label">Хранилище</span>
+                <span class="about-item__value">SQLite</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.settings-row__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.settings-row__label {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.settings-row__desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.settings-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 8px 0;
+}
+
+.about-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.about-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.about-item:last-child {
+    border-bottom: none;
+}
+
+.about-item__label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.about-item__value {
+    font-size: 14px;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+@media (max-width: 768px) {
+    .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .about-item {
+        flex-direction: column;
+        gap: 2px;
+    }
+    .about-item__value {
+        text-align: left;
+    }
+}
+</style>
+{% endblock %}

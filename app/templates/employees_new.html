@@ -1,0 +1,1066 @@
+{% extends "base_new.html" %}
+
+{% block title %}Сотрудники - ЕКЦ График{% endblock %}
+{% block page_title %}<span class="flex items-center gap-3"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Сотрудники</span>{% endblock %}
+{% block page_subtitle %}Управление операторами и профилями на {{ month_label }}{% endblock %}
+
+{% block header_actions %}
+<div class="flex gap-3">
+    <button onclick="showAddVacationModal()" class="btn btn--primary" style="background: var(--apple-green); box-shadow: 0 1px 4px rgba(52,199,89,.25);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        Добавить отпуск
+    </button>
+    <button onclick="showAddEmployeeModal()" class="btn btn--primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Добавить
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* —— Stats Banner —— */
+    .stats-banner {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+
+    @media (max-width: 1024px) {
+        .stats-banner {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 640px) {
+        .stats-banner {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .stats-banner__card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow 200ms ease, transform 200ms ease;
+    }
+
+    .stats-banner__card:hover {
+        box-shadow: var(--shadow);
+        transform: translateY(-1px);
+    }
+
+    .stats-banner__icon {
+        width: 42px;
+        height: 42px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stats-banner__icon--blue { background: var(--blue-100); color: var(--blue-600); }
+    .stats-banner__icon--green { background: var(--green-100); color: var(--green-600); }
+    .stats-banner__icon--purple { background: var(--purple-100); color: var(--purple-600); }
+    .stats-banner__icon--orange { background: var(--orange-100); color: var(--orange-600); }
+    .stats-banner__icon--pink { background: var(--pink-100); color: var(--pink-600); }
+
+    .stats-banner__text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .stats-banner__label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--gray-500);
+    }
+
+    .stats-banner__value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        line-height: 1.15;
+        margin-top: 2px;
+    }
+
+    /* —— Employee Card Grid —— */
+    .employees-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    @media (max-width: 1200px) {
+        .employees-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .employees-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .emp-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        transition: box-shadow 200ms ease, transform 200ms ease;
+    }
+
+    .emp-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-3px);
+    }
+
+    .emp-card__header {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 20px 20px 0 20px;
+    }
+
+    .emp-card__avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.1rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .emp-card__info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .emp-card__name {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--gray-900);
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .emp-card__meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+    }
+
+    .emp-card__id {
+        font-size: 11px;
+        color: var(--gray-400);
+        font-family: var(--font-mono);
+    }
+
+    .emp-card__rate {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--gray-500);
+        padding: 2px 8px 2px 6px;
+        border-radius: 999px;
+        background: var(--gray-100);
+    }
+
+    .emp-card__rate-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green-500);
+    }
+
+    .emp-card__badge {
+        display: inline-flex;
+        padding: 3px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+
+    .emp-card__badge--operator {
+        background: var(--blue-100);
+        color: var(--blue-700);
+    }
+
+    .emp-card__badge--applications {
+        background: var(--purple-100);
+        color: var(--purple-700);
+    }
+
+    .emp-card__body {
+        padding: 16px 20px;
+    }
+
+    .emp-card__stats {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .emp-card__stat-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--bg-secondary);
+    }
+
+    .emp-card__stat-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--gray-500);
+    }
+
+    .emp-card__stat-label svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    .emp-card__stat-value {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+
+    .emp-card__stat-value--vacation {
+        color: var(--orange-500);
+    }
+
+    .emp-card__adjust {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .emp-card__adj-val {
+        font-weight: 700;
+        font-size: 14px;
+        min-width: 36px;
+        text-align: center;
+        font-family: var(--font-mono);
+    }
+
+    .emp-card__adj-val--pos { color: var(--green-600); }
+    .emp-card__adj-val--neg { color: var(--red-500); }
+
+    .emp-card__adj-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        color: var(--gray-700);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 150ms ease;
+    }
+
+    .emp-card__adj-btn:hover {
+        background: var(--blue-600);
+        color: white;
+        border-color: var(--blue-600);
+    }
+
+    .emp-card__footer {
+        display: flex;
+        flex-direction: column;
+        padding: 12px 18px 14px;
+        border-top: 1px solid var(--line);
+        background: var(--bg-secondary);
+        gap: 10px;
+    }
+
+    .emp-card__total {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
+
+    .emp-card__total-label {
+        font-size: 12px;
+        color: var(--gray-400);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        font-weight: 500;
+    }
+
+    .emp-card__total-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--blue-600);
+        white-space: nowrap;
+    }
+
+    .emp-card__progress-mini {
+        flex: 1;
+        max-width: 60px;
+        height: 4px;
+        background: var(--gray-200);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .emp-card__progress-mini-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 300ms ease;
+    }
+
+    .emp-card__actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .emp-card__action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        color: var(--gray-600);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 150ms ease;
+        white-space: nowrap;
+    }
+
+    .emp-card__action-btn svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+
+    .emp-card__action-btn:hover {
+        background: var(--blue-50);
+        border-color: var(--blue-300);
+        color: var(--blue-600);
+    }
+
+    .emp-card__action-btn--danger {
+        color: var(--gray-500);
+    }
+
+    .emp-card__action-btn--danger:hover {
+        background: var(--red-50);
+        border-color: var(--red-300);
+        color: var(--red-500);
+    }
+
+    /* —— Section divider —— */
+    .section-group {
+        margin-bottom: 32px;
+    }
+
+    .section-group__header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .section-group__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 99px;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .section-group__badge--blue {
+        background: var(--blue-100);
+        color: var(--blue-700);
+    }
+
+    .section-group__badge--purple {
+        background: var(--purple-100);
+        color: var(--purple-700);
+    }
+
+    .section-group__desc {
+        font-size: 12px;
+        color: var(--gray-400);
+    }
+
+    .section-group__line {
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+    }
+
+    /* —— Modals —— */
+    .modal-form { padding: 8px 28px 28px 28px; }
+    .form-row { margin-bottom: 18px; }
+    .modal-header-custom {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 28px 28px 0 28px;
+        margin-bottom: 10px;
+    }
+    .modal-header-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        flex-shrink: 0;
+    }
+    .info-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: var(--blue-50);
+        border: 1px solid var(--blue-100);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        color: var(--blue-700);
+        margin-bottom: 18px;
+    }
+    .info-card svg { flex-shrink: 0; }
+    .edit-modal-content { max-width: 560px; }
+    #deleteConfirmModal .modal-dialog { max-width: 420px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats Banner -->
+{% set total_employees = operator_profiles|length %}
+{% set operators_count = operator_profiles|selectattr('employee_type', 'equalto', 'operator')|list|length %}
+{% set applications_count = total_employees - operators_count %}
+<div class="stats-banner">
+    <div class="stats-banner__card">
+        <div class="stats-banner__icon stats-banner__icon--blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="stats-banner__text">
+            <span class="stats-banner__label">Всего сотрудников</span>
+            <span class="stats-banner__value">{{ total_employees }}</span>
+        </div>
+    </div>
+    <div class="stats-banner__card">
+        <div class="stats-banner__icon stats-banner__icon--green">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <div class="stats-banner__text">
+            <span class="stats-banner__label">Операторы</span>
+            <span class="stats-banner__value">{{ operators_count }}</span>
+        </div>
+    </div>
+    <div class="stats-banner__card">
+        <div class="stats-banner__icon stats-banner__icon--purple">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="stats-banner__text">
+            <span class="stats-banner__label">Только заявки</span>
+            <span class="stats-banner__value">{{ applications_count }}</span>
+        </div>
+    </div>
+    <div class="stats-banner__card">
+        <div class="stats-banner__icon stats-banner__icon--orange">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="stats-banner__text">
+            <span class="stats-banner__label">Рабочих дней</span>
+            <span class="stats-banner__value">{{ monthly_working_days }}</span>
+        </div>
+    </div>
+    <div class="stats-banner__card">
+        <div class="stats-banner__icon stats-banner__icon--pink">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        </div>
+        <div class="stats-banner__text">
+            <span class="stats-banner__label">Дней отпуска</span>
+            <span class="stats-banner__value">
+                {% set total_vac = namespace(value=0) %}
+                {% for emp in operator_profiles %}{% set total_vac.value = total_vac.value + vacation_total_days_by_employee.get(emp.name, 0) %}{% endfor %}
+                {{ total_vac.value }}
+            </span>
+        </div>
+    </div>
+</div>
+
+
+<!-- Operators section -->
+{% if operators_count > 0 %}
+<div class="section-group">
+    <div class="section-group__header">
+        <span class="section-group__badge section-group__badge--blue">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Операторы
+        </span>
+        <span class="section-group__desc">{{ operators_count }} {{ 'сотрудник' if operators_count == 1 else 'сотрудника' if operators_count < 5 else 'сотрудников' }}</span>
+        <div class="section-group__line"></div>
+    </div>
+    <div class="employees-grid">
+        {% for employee in operator_profiles|selectattr('employee_type', 'equalto', 'operator')|sort(attribute='name') %}
+        {% set base_norm = operator_base_norms.get(employee.name, 0) %}
+        {% set manual_adjustment = operator_manual_adjustments.get(employee.name, 0) %}
+        {% set has_adjustment = manual_adjustment != 0 %}
+        {% set vacation_hours = vacation_hours_by_employee.get(employee.name, 0) %}
+        {% set vacation_total_days = vacation_total_days_by_employee.get(employee.name, 0) %}
+        {% set total_hours = operator_adjustments.get(employee.name, base_norm)|round(1) %}
+        {% set initials = employee.name.split(' ')|map('first')|join %}
+
+        <div class="emp-card">
+            <div class="emp-card__header">
+                <div class="emp-card__avatar" style="background: linear-gradient(135deg, var(--blue-600), #5856D6);">
+                    {{ initials }}
+                </div>
+                <div class="emp-card__info">
+                    <div class="emp-card__name">{{ employee.name }}</div>
+                    <div class="emp-card__meta">
+                        <span class="emp-card__id">{{ employee.employee_id }}</span>
+                        <span class="emp-card__rate">
+                            <span class="emp-card__rate-dot"></span>
+                            {{ employee.rate }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="emp-card__body">
+                <div class="emp-card__stats">
+                    <div class="emp-card__stat-row">
+                        <span class="emp-card__stat-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            Норма
+                        </span>
+                        <span class="emp-card__stat-value">{{ base_norm }} ч</span>
+                    </div>
+
+                    {% if vacation_hours > 0 %}
+                    <div class="emp-card__stat-row">
+                        <span class="emp-card__stat-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                            Отпуск
+                        </span>
+                        <span class="emp-card__stat-value emp-card__stat-value--vacation">−{{ vacation_hours }} ч</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="emp-card__stat-row">
+                        <span class="emp-card__stat-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Корректировка
+                        </span>
+                        {% if has_adjustment %}
+                        <div class="emp-card__adjust">
+                            <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', -1)" title="−1 час">−</button>
+                            <span class="emp-card__adj-val {% if manual_adjustment > 0 %}emp-card__adj-val--pos{% elif manual_adjustment < 0 %}emp-card__adj-val--neg{% endif %}">{{ '+' if manual_adjustment > 0 else '' }}{{ manual_adjustment|int }}</span>
+                            <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', 1)" title="+1 час">+</button>
+                        </div>
+                        {% else %}
+                        <span class="emp-card__stat-value text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="emp-card__footer">
+                <div class="emp-card__total">
+                    <span class="emp-card__total-label">Итого</span>
+                    <span class="emp-card__total-value">{{ total_hours }} ч</span>
+                </div>
+                <div class="emp-card__actions">
+                    <button class="emp-card__action-btn" onclick="editEmployee('{{ employee.name }}')" title="Редактировать данные">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Редактировать
+                    </button>
+                    <a class="emp-card__action-btn" href="/my-schedule?employee_name={{ employee.name|urlencode }}&year={{ year }}&month={{ month }}" title="Просмотреть график сотрудника">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        График
+                    </a>
+                    {% if has_adjustment %}
+                    <button class="emp-card__action-btn" onclick="resetAdjustment('{{ employee.name }}')" title="Сбросить корректировку">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Сбросить
+                    </button>
+                    {% endif %}
+                    <button class="emp-card__action-btn emp-card__action-btn--danger" onclick="deactivateEmployee('{{ employee.name }}')" title="Деактивировать сотрудника">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                        Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Applications only section -->
+{% if applications_count > 0 %}
+<div class="section-group">
+    <div class="section-group__header">
+        <span class="section-group__badge section-group__badge--purple">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Только заявки
+        </span>
+        <span class="section-group__desc">{{ applications_count }} {{ 'сотрудник' if applications_count == 1 else 'сотрудника' if applications_count < 5 else 'сотрудников' }}</span>
+        <div class="section-group__line"></div>
+    </div>
+    <div class="employees-grid">
+        {% for employee in operator_profiles|selectattr('employee_type', 'equalto', 'applications_only')|sort(attribute='name') %}
+        {% set base_norm = operator_base_norms.get(employee.name, 0) %}
+        {% set manual_adjustment = operator_manual_adjustments.get(employee.name, 0) %}
+        {% set has_adjustment = manual_adjustment != 0 %}
+        {% set vacation_hours = vacation_hours_by_employee.get(employee.name, 0) %}
+        {% set vacation_total_days = vacation_total_days_by_employee.get(employee.name, 0) %}
+        {% set total_hours = operator_adjustments.get(employee.name, base_norm)|round(1) %}
+        {% set initials = employee.name.split(' ')|map('first')|join %}
+
+        <div class="emp-card">
+            <div class="emp-card__header">
+                <div class="emp-card__avatar" style="background: linear-gradient(135deg, var(--purple-600), #DB2777);">
+                    {{ initials }}
+                </div>
+                <div class="emp-card__info">
+                    <div class="emp-card__name">{{ employee.name }}</div>
+                    <div class="emp-card__meta">
+                        <span class="emp-card__id">{{ employee.employee_id }}</span>
+                        <span class="emp-card__rate">
+                            <span class="emp-card__rate-dot"></span>
+                            {{ employee.rate }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="emp-card__body">
+                <div class="emp-card__stats">
+                    <div class="emp-card__stat-row">
+                        <span class="emp-card__stat-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            Норма
+                        </span>
+                        <span class="emp-card__stat-value">{{ base_norm }} ч</span>
+                    </div>
+
+                    {% if vacation_hours > 0 %}
+                    <div class="emp-card__stat-row">
+                        <span class="emp-card__stat-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                            Отпуск
+                        </span>
+                        <span class="emp-card__stat-value emp-card__stat-value--vacation">−{{ vacation_hours }} ч</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="emp-card__stat-row">
+                        <span class="emp-card__stat-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Корректировка
+                        </span>
+                        {% if has_adjustment %}
+                        <div class="emp-card__adjust">
+                            <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', -1)" title="−1 час">−</button>
+                            <span class="emp-card__adj-val {% if manual_adjustment > 0 %}emp-card__adj-val--pos{% elif manual_adjustment < 0 %}emp-card__adj-val--neg{% endif %}">{{ '+' if manual_adjustment > 0 else '' }}{{ manual_adjustment|int }}</span>
+                            <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', 1)" title="+1 час">+</button>
+                        </div>
+                        {% else %}
+                        <span class="emp-card__stat-value text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="emp-card__footer">
+                <div class="emp-card__total">
+                    <span class="emp-card__total-label">Итого</span>
+                    <span class="emp-card__total-value">{{ total_hours }} ч</span>
+                </div>
+                <div class="emp-card__actions">
+                    <button class="emp-card__action-btn" onclick="editEmployee('{{ employee.name }}')" title="Редактировать данные">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Редактировать
+                    </button>
+                    <a class="emp-card__action-btn" href="/my-schedule?employee_name={{ employee.name|urlencode }}&year={{ year }}&month={{ month }}" title="Просмотреть график сотрудника">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        График
+                    </a>
+                    {% if has_adjustment %}
+                    <button class="emp-card__action-btn" onclick="resetAdjustment('{{ employee.name }}')" title="Сбросить корректировку">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Сбросить
+                    </button>
+                    {% endif %}
+                    <button class="emp-card__action-btn emp-card__action-btn--danger" onclick="deactivateEmployee('{{ employee.name }}')" title="Деактивировать сотрудника">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                        Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if not operator_profiles %}
+<div class="empty-state">
+    <svg class="empty-state__icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <div class="empty-state__title">Нет сотрудников</div>
+    <p class="empty-state__desc">Добавьте первого сотрудника, чтобы начать работу</p>
+    <button class="btn btn--primary" onclick="showAddEmployeeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Добавить сотрудника
+    </button>
+</div>
+{% endif %}
+
+<!-- Add Employee Modal -->
+<div class="modal-backdrop" id="addEmployeeModal" role="dialog" aria-modal="true" aria-labelledby="addEmployeeTitle">
+    <div class="modal-dialog">
+        <div class="modal-header-custom">
+            <div class="modal-header-icon" style="background: linear-gradient(135deg, var(--apple-blue), #5856D6);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div>
+                <h3 id="addEmployeeTitle" class="text-xl font-semibold">Добавить сотрудника</h3>
+                <p class="text-sm text-muted">Заполните информацию о новом сотруднике</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeAddEmployeeModal()" aria-label="Закрыть" style="margin-left: auto;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/employees/save" class="modal-form">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+
+            <div class="form-row">
+                <label class="form-label" for="addName">ФИО <span style="color: var(--apple-red);">*</span></label>
+                <input type="text" id="addName" name="name" required class="input w-full" placeholder="Иванов Иван Иванович">
+            </div>
+
+            <div class="form-row">
+                <label class="form-label" for="addEmployeeId">ID сотрудника <span style="color: var(--apple-red);">*</span></label>
+                <input type="text" id="addEmployeeId" name="employee_id" required class="input w-full" placeholder="001" style="letter-spacing: 2px; font-family: var(--font-mono);">
+            </div>
+
+            <div class="form-grid">
+                <div class="form-row">
+                    <label class="form-label" for="addRate">Ставка <span style="color: var(--apple-red);">*</span></label>
+                    <select id="addRate" name="rate" class="input w-full">
+                        <option value="1.0">1.0 — Полная ставка</option>
+                        <option value="0.75">0.75 — Три четверти</option>
+                        <option value="0.5">0.5 — Половина</option>
+                        <option value="0.25">0.25 — Четверть</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label class="form-label" for="addType">Тип <span style="color: var(--apple-red);">*</span></label>
+                    <select id="addType" name="employee_type" class="input w-full">
+                        <option value="operator">Оператор</option>
+                        <option value="applications_only">Только заявки</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Сотруднику будет автоматически создан аккаунт с паролем</span>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--ghost" onclick="closeAddEmployeeModal()">Отмена</button>
+                <button type="submit" class="btn btn--primary">Добавить сотрудника</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div class="modal-backdrop" id="editEmployeeModal" role="dialog" aria-modal="true" aria-labelledby="editEmployeeTitle">
+    <div class="modal-dialog edit-modal-content">
+        <div class="modal-header-custom">
+            <div class="modal-header-icon" style="background: linear-gradient(135deg, var(--apple-orange), #E08600);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+            <div>
+                <h3 id="editEmployeeTitle" class="text-xl font-semibold">Редактирование</h3>
+                <p class="text-sm text-muted" id="editEmployeeName">Изменение данных</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeEditEmployeeModal()" aria-label="Закрыть" style="margin-left: auto;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/employees/update" class="modal-form">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+            <input type="hidden" name="original_name" id="editOriginalName">
+
+            <div class="form-row">
+                <label class="form-label" for="editName">ФИО <span style="color: var(--apple-red);">*</span></label>
+                <input type="text" id="editName" name="name" required class="input w-full" placeholder="Иванов Иван Иванович">
+            </div>
+
+            <div class="form-row">
+                <label class="form-label" for="editEmployeeId">ID сотрудника <span style="color: var(--apple-red);">*</span></label>
+                <input type="text" id="editEmployeeId" name="employee_id" required class="input w-full" placeholder="001" style="letter-spacing: 2px; font-family: var(--font-mono);">
+            </div>
+
+            <div class="form-grid">
+                <div class="form-row">
+                    <label class="form-label" for="editRate">Ставка <span style="color: var(--apple-red);">*</span></label>
+                    <select id="editRate" name="rate" class="input w-full">
+                        <option value="1.0">1.0 — Полная ставка</option>
+                        <option value="0.75">0.75 — Три четверти</option>
+                        <option value="0.5">0.5 — Половина</option>
+                        <option value="0.25">0.25 — Четверть</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label class="form-label" for="editType">Тип <span style="color: var(--apple-red);">*</span></label>
+                    <select id="editType" name="employee_type" class="input w-full">
+                        <option value="operator">Оператор</option>
+                        <option value="applications_only">Только заявки</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--ghost" onclick="closeEditEmployeeModal()">Отмена</button>
+                <button type="submit" class="btn btn--primary">Сохранить изменения</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Vacation Modal -->
+<div class="modal-backdrop" id="addVacationModal" role="dialog" aria-modal="true" aria-labelledby="addVacationTitle">
+    <div class="modal-dialog">
+        <div class="modal-header-custom">
+            <div class="modal-header-icon" style="background: linear-gradient(135deg, var(--apple-green), #2DA84E);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            </div>
+            <div>
+                <h3 id="addVacationTitle" class="text-xl font-semibold">Добавить отпуск</h3>
+                <p class="text-sm text-muted">Укажите период отпуска сотрудника</p>
+            </div>
+            <button type="button" class="modal-close" onclick="closeAddVacationModal()" aria-label="Закрыть" style="margin-left: auto;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/vacations/save" class="modal-form">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+
+            <div class="form-row">
+                <label class="form-label" for="vacationEmployee">Сотрудник <span style="color: var(--apple-red);">*</span></label>
+                <select id="vacationEmployee" name="vacation_employee_name" required class="input w-full">
+                    <option value="">Выберите сотрудника</option>
+                    {% for emp in operator_profiles %}
+                    <option value="{{ emp.name }}">{{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-row">
+                    <label class="form-label" for="vacationStart">Дата начала <span style="color: var(--apple-red);">*</span></label>
+                    <input type="date" id="vacationStart" name="vacation_start_date" required class="input w-full">
+                </div>
+                <div class="form-row">
+                    <label class="form-label" for="vacationEnd">Дата окончания <span style="color: var(--apple-red);">*</span></label>
+                    <input type="date" id="vacationEnd" name="vacation_end_date" required class="input w-full">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <label class="form-label" for="vacationNote">Комментарий</label>
+                <input type="text" id="vacationNote" name="vacation_note" class="input w-full" placeholder="Например: ежегодный оплачиваемый отпуск">
+            </div>
+
+            <div class="info-card">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Сотрудник не будет отображаться в доступных для планирования в этот период</span>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn--ghost" onclick="closeAddVacationModal()">Отмена</button>
+                <button type="submit" class="btn btn--primary" style="background: var(--apple-green); box-shadow: 0 1px 4px rgba(52,199,89,.25);">Добавить отпуск</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-backdrop" id="deleteConfirmModal" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+    <div class="modal-dialog" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3 id="deleteConfirmTitle" class="modal-title">Подтверждение действия</h3>
+            <button type="button" class="modal-close" onclick="closeDeleteModal()" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <p id="deleteConfirmMessage" class="text-muted" style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.5;"></p>
+
+            <input type="hidden" id="deleteActionType">
+            <input type="hidden" id="deleteEmployeeNameValue">
+
+            <div class="modal-footer" style="margin-top: 0; padding-top: 12px;">
+                <button type="button" class="btn btn--secondary" onclick="closeDeleteModal()">Отмена</button>
+                <button type="button" class="btn btn--danger" onclick="confirmDeleteAction()">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Данные сотрудников для редактирования
+const employeesData = {
+    {% for emp in operator_profiles %}
+    '{{ emp.name|replace("'", "\\'") }}': {
+        name: '{{ emp.name|replace("'", "\\'") }}',
+        employee_id: '{{ emp.employee_id|replace("'", "\\'") }}',
+        rate: {{ emp.rate }},
+        employee_type: '{{ emp.employee_type }}'
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+function showAddEmployeeModal() {
+    document.getElementById('addEmployeeModal').classList.add('active');
+    setTimeout(() => {
+        const nameInput = document.getElementById('addName');
+        if (nameInput) nameInput.focus();
+    }, 100);
+}
+
+function closeAddEmployeeModal() {
+    document.getElementById('addEmployeeModal').classList.remove('active');
+}
+
+function showAddVacationModal() {
+    document.getElementById('addVacationModal').classList.add('active');
+    setTimeout(() => {
+        const sel = document.getElementById('vacationEmployee');
+        if (sel) sel.focus();
+    }, 100);
+}
+
+function closeAddVacationModal() {
+    document.getElementById('addVacationModal').classList.remove('active');
+}
+
+function adjustHours(employeeName, delta) {
+    fetch('/employees/adjust-hours', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `employee_name=${encodeURIComponent(employeeName)}&delta=${delta}&return_year={{ year }}&return_month={{ month }}`
+    }).then(() => location.reload());
+}
+
+function showResetAdjustmentConfirm(employeeName) {
+    document.getElementById('deleteActionType').value = 'reset_adjustment';
+    document.getElementById('deleteEmployeeNameValue').value = employeeName;
+    document.getElementById('deleteConfirmMessage').textContent = `Сбросить корректировку часов для сотрудника ${employeeName}?`;
+    document.getElementById('deleteConfirmModal').classList.add('active');
+}
+
+function resetAdjustment(employeeName) {
+    showResetAdjustmentConfirm(employeeName);
+}
+
+function editEmployee(employeeName) {
+    const emp = employeesData[employeeName];
+    if (!emp) return;
+
+    document.getElementById('editEmployeeName').textContent = employeeName;
+    document.getElementById('editOriginalName').value = employeeName;
+    document.getElementById('editName').value = emp.name;
+    document.getElementById('editEmployeeId').value = emp.employee_id;
+    document.getElementById('editRate').value = emp.rate.toString();
+    document.getElementById('editType').value = emp.employee_type;
+
+    document.getElementById('editEmployeeModal').classList.add('active');
+}
+
+function closeEditEmployeeModal() {
+    document.getElementById('editEmployeeModal').classList.remove('active');
+}
+
+function showDeactivateConfirm(employeeName) {
+    document.getElementById('deleteActionType').value = 'deactivate';
+    document.getElementById('deleteEmployeeNameValue').value = employeeName;
+    document.getElementById('deleteConfirmMessage').textContent = `Деактивировать сотрудника ${employeeName}?`;
+    document.getElementById('deleteConfirmModal').classList.add('active');
+}
+
+function deactivateEmployee(employeeName) {
+    showDeactivateConfirm(employeeName);
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteConfirmModal').classList.remove('active');
+}
+
+function confirmDeleteAction() {
+    const actionType = document.getElementById('deleteActionType').value;
+    const employeeName = document.getElementById('deleteEmployeeNameValue').value;
+
+    if (actionType === 'reset_adjustment') {
+        fetch('/employees/reset-adjustments', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `employee_name=${encodeURIComponent(employeeName)}&return_year={{ year }}&return_month={{ month }}`
+        }).then(() => location.reload());
+    } else if (actionType === 'deactivate') {
+        fetch('/employees/deactivate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `employee_name=${encodeURIComponent(employeeName)}`
+        }).then(() => location.reload());
+    }
+}
+</script>
+{% endblock %}

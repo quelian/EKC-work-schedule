@@ -1,0 +1,144 @@
+{% extends "base_new.html" %}
+
+{% block title %}Выберите сотрудника{% endblock %}
+{% block page_title %}Выберите сотрудника{% endblock %}
+{% block page_subtitle %}Для просмотра личного расписания{% endblock %}
+
+{% block content %}
+
+{% if operators %}
+<div class="mb-4">
+    <div class="form-group" style="max-width: 360px;">
+        <input type="text" id="employeeSearch" class="input" placeholder="Поиск по имени..." oninput="filterEmployees()" style="padding-left: 40px;">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+</div>
+{% endif %}
+
+{% if operators %}
+<div class="grid-responsive-3" id="employeeGrid">
+    {% for operator in operators %}
+    <a href="/my-schedule?employee_name={{ operator.name }}&year={{ year }}&month={{ month }}"
+       class="emp-card card animate-fade-in"
+       style="animation-delay: {{ loop.index * 50 }}ms;"
+       data-name="{{ operator.name | lower }}">
+        <div class="emp-card__avatar">{{ operator.name[0] }}</div>
+        <h3 class="emp-card__name">{{ operator.name }}</h3>
+        <p class="emp-card__role">
+            {% if operator.employee_type == 'operator' %}
+            Оператор
+            {% else %}
+            Только заявки
+            {% endif %}
+        </p>
+        <div class="emp-card__footer">
+            <span class="emp-card__rate">Ставка {{ operator.rate }}</span>
+            <span class="emp-card__arrow">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <span class="empty-state__icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </span>
+    <p class="empty-state__title">Нет сотрудников</p>
+    <p class="empty-state__desc">Сначала добавьте сотрудников в разделе «Сотрудники»</p>
+    <a href="/employees" class="btn btn--primary">Добавить сотрудника</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+
+.emp-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    padding: 20px;
+    transition: box-shadow var(--ease), transform var(--ease), border-color var(--ease);
+}
+
+.emp-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border);
+}
+
+.emp-card__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    background: var(--gradient-blue);
+    margin-bottom: 12px;
+}
+
+.emp-card__name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+}
+
+.emp-card__role {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.emp-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+}
+
+.emp-card__rate {
+    font-size: 13px;
+    color: var(--text-tertiary);
+}
+
+.emp-card__arrow {
+    color: var(--apple-blue);
+    display: flex;
+    align-items: center;
+    transition: transform var(--ease);
+}
+
+.emp-card:hover .emp-card__arrow {
+    transform: translateX(2px);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterEmployees() {
+    var query = document.getElementById('employeeSearch').value.toLowerCase();
+    document.querySelectorAll('.emp-card').forEach(function(card) {
+        var name = card.getAttribute('data-name');
+        card.style.display = name.indexOf(query) !== -1 ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

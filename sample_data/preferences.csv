@@ -1,0 +1,4 @@
+employee_name,date,start_time,end_time,kind,strict,note
+Игорь Петров,2026-03-07,00:00,23:59,prefer_off,false,Семейное мероприятие
+Павел Соколов,2026-03-14,10:00,18:00,prefer_work,false,Готов выйти дополнительно
+Ольга Лебедева,2026-03-18,00:00,23:59,unavailable,true,Прием у врача

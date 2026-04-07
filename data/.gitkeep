@@ -1,0 +1,2 @@
+# This file ensures the data directory is included in PyInstaller builds.
+# Remove it if you no longer need it.

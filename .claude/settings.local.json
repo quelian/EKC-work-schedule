@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f \"uvicorn.*8001\")",
+      "Bash(curl -s http://127.0.0.1:8001/schedule/editor)",
+      "Bash(curl -s http://127.0.0.1:8001/constraints -w \"%{http_code}\" -o /tmp/redirect_test.html)",
+      "Read(//tmp/**)",
+      "Bash(curl -sL http://127.0.0.1:8001/constraints)",
+      "Bash(curl -sL \"http://127.0.0.1:8001/my-schedule?employee_name=Тестовый\")",
+      "Bash(source .venv/bin/activate)",
+      "Bash(python3 -c \":*)",
+      "Bash(curl -sL \"http://127.0.0.1:8001/my-schedule?employee_name=%D0%90%D0%B2%D0%B4%D0%B5%D0%B5%D0%B2%D0%B0%20%D0%AD%D0%BB%D1%8C%D0%B2%D0%B8%D1%80%D0%B0\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/login)",
+      "Bash(python -c \"from app.main_new import app; print\\(''Import successful''\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8001/login)",
+      "Bash(curl -s http://localhost:8001/login)",
+      "Bash(curl:*)",
+      "Bash(pkill -f \"uvicorn app.main_new\")",
+      "Bash(python -c \":*)",
+      "Bash(python3:*)",
+      "Bash(.venv/bin/python3 -c \":*)",
+      "Bash(.venv/bin/python3:*)",
+      "Bash(.venv/bin/python -c \"from app.main_new import app; print\\(''Import successful''\\)\")",
+      "Bash(.venv/bin/python -c \":*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(./run_server.sh)",
+      "Bash(lsof -ti:8001)",
+      "Bash(xargs kill:*)",
+      "Bash(python -m uvicorn app.main_new:app --host 0.0.0.0 --port 8001 --reload)",
+      "Bash(python -c \"from app.main_new import app; print\\(''Import OK''\\)\")",
+      "Bash(python:*)",
+      "Bash(xargs -I {} log show --pid {} --last 1m)",
+      "Bash(kill 77688)",
+      "Bash(find /Users/egor/график работы екц -name *.pyc -o -name *.bak -o -name *~ -o -name *.orig)",
+      "Bash(find /Users/egor/график работы екц -name *.pyc -o -name __pycache__ -o -name *.pyo)",
+      "Bash(ls -la /Users/egor/график работы екц/app/*.py)",
+      "Bash(xargs ls:*)",
+      "Bash(pkill -f \"uvicorn app.main_new:app --port 8001\")",
+      "Bash(uvicorn app.main_new:app --reload --host 0.0.0.0 --port 8000)",
+      "Bash(ln:*)"
+    ]
+  }
+}

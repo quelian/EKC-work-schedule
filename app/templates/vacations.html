@@ -1,0 +1,260 @@
+{% extends "base_new.html" %}
+
+{% block title %}Отпуска — ЕКЦ График{% endblock %}
+{% block page_title %}Отпуска{% endblock %}
+{% block page_subtitle %}Управление отпусками{% endblock %}
+
+{% block header_actions %}
+<button onclick="showAddVacationModal()" class="btn btn--primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Добавить отпуск
+</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Vacation List grouped by employee -->
+{% if vacation_entries %}
+    {% set current_group = namespace(value=none) %}
+
+    {% for vacation in vacation_entries %}
+        {% if vacation.employee_name != current_group.value %}
+            {% if current_group.value is not none %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            <div class="vac-emp-group">
+                <div class="vac-emp-header">
+                    <span class="vac-emp-avatar">{{ vacation.employee_name[0] }}</span>
+                    <span class="vac-emp-name">{{ vacation.employee_name }}</span>
+                </div>
+                <div class="vac-emp-table">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Период</th>
+                                <th>Дней</th>
+                                {% if vacation.note is defined %}<th>Комментарий</th>{% endif %}
+                                <th style="width: 120px;">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            {% set current_group.value = vacation.employee_name %}
+        {% endif %}
+
+        {% set start = vacation.start_date %}
+        {% set end = vacation.end_date %}
+        {% set total_days = (end - start).days + 1 %}
+        <tr class="vacation-row">
+            <td data-label="Период">
+                <span class="vacation-dates">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {{ vacation.start_date.strftime('%d.%m.%Y') }} — {{ vacation.end_date.strftime('%d.%m.%Y') }}
+                </span>
+            </td>
+            <td data-label="Дней">
+                <span class="badge badge--green">{{ total_days }} дн.</span>
+            </td>
+            {% if vacation.note is defined %}
+            <td data-label="Комментарий">
+                {% if vacation.note %}<span class="text-sm text-muted">{{ vacation.note }}</span>{% endif %}
+            </td>
+            {% endif %}
+            <td data-label="Действия">
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" onclick="editVacation({{ vacation.id }}, '{{ vacation.employee_name }}', '{{ vacation.start_date }}', '{{ vacation.end_date }}', '{{ vacation.note or '' }}')" class="btn btn--sm btn--secondary" aria-label="Редактировать">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button type="button" onclick="deleteVacation({{ vacation.id }}, '{{ vacation.employee_name }}')" class="btn btn--sm btn--danger" aria-label="Удалить">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </td>
+        </tr>
+
+        {# Last entry: close everything #}
+        {% if loop.last %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+{% else %}
+<div class="empty-state">
+    <span class="empty-state__icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+    </span>
+    <p class="empty-state__title">Нет отпусков</p>
+    <p class="empty-state__desc">
+        {% if request.session.get('user_role') == 'admin' %}
+        На данный момент нет запланированных отпусков
+        {% else %}
+        У вас пока нет запланированных отпусков
+        {% endif %}
+    </p>
+    <button onclick="showAddVacationModal()" class="btn btn--primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Добавить отпуск
+    </button>
+</div>
+{% endif %}
+
+<!-- Add/Edit Vacation Modal -->
+<div class="modal-backdrop" id="vacationModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Добавить отпуск</h3>
+            <button class="modal-close" onclick="ModalSystem.close('vacationModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="POST" action="/vacations/save" id="vacationForm">
+            <input type="hidden" id="vacationId" name="vacation_id" value="">
+            <input type="hidden" name="return_year" value="{{ year }}">
+            <input type="hidden" name="return_month" value="{{ month }}">
+
+            {% if request.session.get('user_role') == 'admin' %}
+            <div class="form-group">
+                <label for="vacationEmployeeName" class="form-label">Сотрудник</label>
+                <select name="vacation_employee_name" id="vacationEmployeeName" required class="input">
+                    <option value="">Выберите сотрудника</option>
+                    {% for emp_name in employees_list %}
+                    <option value="{{ emp_name }}">{{ emp_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="vacation_employee_name" value="{{ current_user }}">
+            {% endif %}
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="vacationStartDate" class="form-label">Дата начала</label>
+                    <input type="date" name="vacation_start_date" id="vacationStartDate" required class="input">
+                </div>
+                <div class="form-group">
+                    <label for="vacationEndDate" class="form-label">Дата окончания</label>
+                    <input type="date" name="vacation_end_date" id="vacationEndDate" required class="input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="vacationNote" class="form-label">Комментарий <span class="text-muted font-medium">(необязательно)</span></label>
+                <input type="text" name="vacation_note" id="vacationNote" class="input" placeholder="Например: ежегодный оплачиваемый отпуск">
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" onclick="ModalSystem.close('vacationModal')" class="btn btn--secondary flex-1">Отмена</button>
+                <button type="submit" class="btn btn--primary flex-1">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-backdrop" id="deleteVacationModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">Удаление отпуска</h3>
+            <button class="modal-close" onclick="ModalSystem.close('deleteVacationModal')" aria-label="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-secondary); margin: 0;">Удалить отпуск <strong id="deleteVacationEmployee"></strong>?</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" onclick="ModalSystem.close('deleteVacationModal')" class="btn btn--secondary flex-1">Отмена</button>
+            <form method="POST" action="/vacations/delete" style="flex: 1;">
+                <input type="hidden" id="deleteVacationId" name="vacation_id" value="">
+                <input type="hidden" name="return_year" value="{{ year }}">
+                <input type="hidden" name="return_month" value="{{ month }}">
+                <button type="submit" class="btn btn--danger btn--block">Удалить</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.vacation-dates {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* Grouped by employee */
+.vac-emp-group {
+    margin-bottom: 24px;
+}
+.vac-emp-group:last-child {
+    margin-bottom: 0;
+}
+.vac-emp-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.vac-emp-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--orange-100);
+    color: var(--orange-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+}
+.vac-emp-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.vac-emp-table table {
+    border-top: 1px solid var(--line);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showAddVacationModal() {
+    document.getElementById('modalTitle').textContent = 'Добавить отпуск';
+    document.getElementById('vacationForm').reset();
+    document.getElementById('vacationId').value = '';
+    ModalSystem.open('vacationModal');
+}
+
+function editVacation(id, employee, startDate, endDate, note) {
+    document.getElementById('modalTitle').textContent = 'Редактировать отпуск';
+    document.getElementById('vacationId').value = id;
+    document.getElementById('vacationEmployeeName').value = employee;
+    document.getElementById('vacationStartDate').value = startDate;
+    document.getElementById('vacationEndDate').value = endDate;
+    document.getElementById('vacationNote').value = note || '';
+    ModalSystem.open('vacationModal');
+}
+
+function deleteVacation(id, employee) {
+    document.getElementById('deleteVacationId').value = id;
+    document.getElementById('deleteVacationEmployee').textContent = employee;
+    ModalSystem.open('deleteVacationModal');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        ModalSystem.close('vacationModal');
+        ModalSystem.close('deleteVacationModal');
+    }
+});
+</script>
+{% endblock %}

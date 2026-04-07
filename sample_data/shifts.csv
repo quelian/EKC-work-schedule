@@ -1,0 +1,7 @@
+code,label,start_time,end_time,duration_hours,applies_to,required_staff
+WD_OPEN,Будни 08:00-13:00,08:00,13:00,5,weekday,1
+WD_DAY_ONE,Будни 09:00-14:00,09:00,14:00,5,weekday,1
+WD_DAY_TWO,Будни 10:00-18:00,10:00,18:00,8,weekday,1
+WD_LATE,Будни 14:00-22:00,14:00,22:00,8,weekday,1
+WE_MORNING,Выходной или праздник 09:00-15:00,09:00,15:00,6,weekend_or_holiday,1
+WE_EVENING,Выходной или праздник 15:00-21:00,15:00,21:00,6,weekend_or_holiday,1

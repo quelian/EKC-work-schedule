@@ -1,0 +1,2596 @@
+{% extends "base_new.html" %}
+
+{% block title %}Редактор графика - {{ month_label }}{% endblock %}
+{% block page_title %}Редактор графика{% endblock %}
+{% block page_subtitle %}{{ month_label }} — Визуальное планирование смен{% endblock %}
+
+{% block header_actions %}
+<div class="flex gap-2 items-center flex-wrap">
+    <div class="flex items-center gap-1 editor-pill" id="viewModeBtns" role="tablist" aria-label="Режим отображения">
+        <button onclick="setViewMode('day')" id="viewDayBtn" class="vmb" role="tab" aria-selected="false">День</button>
+        <button onclick="setViewMode('week')" id="viewWeekBtn" class="vmb" role="tab" aria-selected="false">Неделя</button>
+        <button onclick="setViewMode('month')" id="viewMonthBtn" class="vmb active" role="tab" aria-selected="true">Месяц</button>
+    </div>
+    <button onclick="goToToday()" class="btn-secondary text-sm px-3 py-2">Сегодня</button>
+    <button onclick="showShortcuts()" class="btn-secondary text-sm px-3 py-2" title="Горячие клавиши">⌘</button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ================================================================
+   SCHEDULE EDITOR v3 — Apple iOS/macOS Design
+   ================================================================ */
+
+/* ===== CSS CUSTOM PROPERTIES — Apple System Palette ===== */
+:root {
+    /* Apple System Colors */
+    --sys-blue: #007AFF;
+    --sys-blue-hover: #0062CC;
+    --sys-blue-light: rgba(0,122,255,0.12);
+    --sys-green: #34C759;
+    --sys-green-hover: #2DB84E;
+    --sys-red: #FF3B30;
+    --sys-red-hover: #E0342B;
+    --sys-orange: #FF9F0A;
+    --sys-yellow: #FFCC00;
+    --sys-indigo: #5856D6;
+    --sys-purple: #AF52DE;
+    --sys-pink: #FF2D55;
+    --sys-teal: #5AC8FA;
+    --sys-cyan: #00C7BE;
+    /* Surface Colors */
+    --bg-primary: #F2F2F7;
+    --bg-surface: #FFFFFF;
+    --bg-secondary: #F9F9FB;
+    --bg-elevated: #FFFFFF;
+    /* Text Colors */
+    --text-primary: rgba(0,0,0,0.87);
+    --text-secondary: rgba(60,60,67,0.6);
+    --text-tertiary: rgba(60,60,67,0.35);
+    /* Border Colors */
+    --border: rgba(60,60,67,0.12);
+    --border-strong: rgba(60,60,67,0.24);
+    /* Shadows */
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+    --shadow-md: 0 2px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+    --shadow-xl: 0 20px 60px rgba(0,0,0,0.2);
+    /* Typography */
+    --font-stack: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
+    /* Layout */
+    --slot-width: 44px;
+    --row-h: 56px;
+    --header-h: 58px;
+    --sidebar-w: 280px;
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    /* Transitions */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-normal: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-fast: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.dark-theme {
+    --bg-primary: #000000;
+    --bg-surface: #1C1C1E;
+    --bg-secondary: #2C2C2E;
+    --bg-elevated: #2C2C2E;
+    --text-primary: #FFFFFF;
+    --text-secondary: rgba(235,235,245,0.6);
+    --text-tertiary: rgba(235,235,245,0.35);
+    --border: rgba(84,84,88,0.65);
+    --border-strong: rgba(84,84,88,0.85);
+    --sys-blue: #0A84FF;
+    --sys-blue-hover: #409CFF;
+    --sys-blue-light: rgba(10,132,255,0.2);
+    --sys-green: #30D158;
+    --sys-green-hover: #3CE368;
+    --sys-red: #FF453A;
+    --sys-red-hover: #FF6961;
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.2);
+    --shadow-md: 0 2px 12px rgba(0,0,0,0.3);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+    --shadow-xl: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+/* ===== GLOBAL RESETS & FOCUS ===== */
+* { box-sizing: border-box; }
+:focus-visible {
+    outline: 2px solid var(--sys-blue);
+    outline-offset: 2px;
+}
+
+/* ===== MAIN GANTT WRAPPER ===== */
+.gantt-wrap {
+    display: flex; flex-direction: column;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    height: calc(100vh - 50px);
+    min-height: 400px;
+    font-family: var(--font-stack);
+    letter-spacing: -0.01em;
+}
+
+/* ===== NAVIGATION BAR ===== */
+.gantt-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--bg-surface) 85%, transparent);
+}
+
+.nav-grp { display: flex; align-items: center; gap: 10px; }
+
+.nav-b {
+    width: 36px; height: 36px; border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary); cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s var(--ease-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+.nav-b:hover {
+    border-color: var(--sys-blue); color: var(--sys-blue);
+    background: var(--sys-blue-light); transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+.nav-b:active { transform: translateY(0) scale(0.95); }
+
+.period-lbl {
+    font-weight: 600; font-size: 15px; color: var(--text-primary);
+    min-width: 220px; text-align: center;
+    letter-spacing: -0.02em;
+}
+
+/* Weekend show/hide iOS-style toggle switch */
+.weekends-toggle {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; user-select: none;
+}
+.weekends-toggle input[type="checkbox"] {
+    position: absolute; opacity: 0; pointer-events: none;
+}
+.weekends-toggle-track {
+    width: 38px; height: 22px; border-radius: 11px;
+    background: var(--border); position: relative;
+    transition: background 0.2s var(--ease-fast);
+}
+.weekends-toggle-track::after {
+    content: ''; position: absolute;
+    top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s var(--ease-fast);
+}
+.weekends-toggle input:checked + .weekends-toggle-track {
+    background: var(--sys-green);
+}
+.weekends-toggle input:checked + .weekends-toggle-track::after {
+    transform: translateX(16px);
+}
+.weekends-toggle-label {
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Non-working day toggle on date headers */
+.nw-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255,159,10,0.25);
+    background: rgba(255,159,10,0.04);
+    cursor: pointer; margin-left: 8px;
+    font-size: 10px; font-weight: 600; line-height: 1;
+    transition: all 0.18s var(--ease-fast);
+    color: var(--text-secondary);
+    user-select: none;
+}
+.nw-toggle:hover {
+    background: rgba(255,159,10,0.12);
+    border-color: var(--sys-orange);
+}
+.nw-toggle.active {
+    border-color: var(--sys-orange);
+    background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+    color: var(--sys-orange);
+    box-shadow: 0 1px 3px rgba(255,159,10,0.2);
+}
+.dark-theme .nw-toggle.active {
+    background: linear-gradient(135deg, rgba(255,159,10,0.15), rgba(255,159,10,0.08));
+}
+.nw-date {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sync-ind {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500;
+    padding: 6px 12px; background: var(--bg-secondary);
+    border-radius: 20px; color: var(--text-secondary);
+    transition: all 0.3s var(--ease-fast);
+}
+.sync-ind.saving { color: var(--sys-orange); background: rgba(255,159,10,0.1); }
+.sync-ind.saved  { color: var(--sys-green); background: rgba(52,199,89,0.1); }
+.sync-ind.error  { color: var(--sys-red); background: rgba(255,59,48,0.1); }
+
+/* ===== VIEW MODE PILLS ===== */
+.editor-pill {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    display: inline-flex;
+    gap: 2px;
+}
+
+.vmb {
+    padding: 6px 14px; border-radius: 8px; border: none;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.2s var(--ease-fast);
+    background: transparent; color: var(--text-secondary);
+    font-family: var(--font-stack);
+}
+.vmb:hover { color: var(--sys-blue); background: var(--sys-blue-light); }
+.vmb:active { transform: scale(0.96); }
+.vmb.active {
+    background: linear-gradient(135deg, var(--sys-blue) 0%, var(--sys-indigo) 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,122,255,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.dark-theme .vmb.active {
+    background: linear-gradient(135deg, var(--sys-blue) 0%, var(--sys-indigo) 100%);
+    box-shadow: 0 2px 8px rgba(10,132,255,0.35);
+}
+
+/* ===== GRID LAYOUT ===== */
+.gantt-grid {
+    display: grid; grid-template-columns: var(--sidebar-w) 1fr;
+    flex: 1; min-height: 0; overflow: hidden;
+}
+
+/* ===== SIDEBAR ===== */
+.g-sidebar {
+    display: flex; flex-direction: column;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+}
+.g-sidebar-head {
+    height: var(--header-h);
+    padding: 5px 8px 4px;
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    flex-shrink: 0; overflow: hidden;
+    justify-content: center; gap: 3px;
+}
+.g-search {
+    min-width: 0; width: 100%;
+    padding: 4px 7px; border: 1px solid var(--border);
+    border-radius: 5px; font-size: 12px; line-height: 1;
+    height: 22px;
+    background: var(--bg-surface); color: var(--text-primary);
+    font-family: var(--font-stack);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+}
+.g-search:focus {
+    outline: none; border-color: var(--sys-blue);
+    box-shadow: 0 0 0 2px var(--sys-blue-light);
+}
+.g-search::placeholder { color: var(--text-tertiary); }
+
+.g-filter {
+    padding: 0 6px; border: 1px solid var(--border);
+    border-radius: 5px; font-size: 11px; line-height: 22px;
+    height: 22px;
+    background: var(--bg-surface); color: var(--text-primary);
+    font-family: var(--font-stack); cursor: pointer;
+    transition: border-color 0.15s;
+    -webkit-appearance: textfield; -moz-appearance: textfield;
+}
+.g-filter:focus { outline: none; border-color: var(--sys-blue); box-shadow: 0 0 0 2px var(--sys-blue-light); }
+
+.g-emp-list {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    overscroll-behavior-y: contain;
+}
+.g-tl-header-wrap { overflow: hidden; }
+
+/* Separator line between operators and applications-only */
+.g-emp-sep {
+    height: 1px; background: var(--border-strong);
+    margin: 4px 16px;
+}
+
+.g-emp-row {
+    height: var(--row-h);
+    display: flex; align-items: center;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+    transition: background 0.15s;
+}
+.g-emp-row:hover { background: var(--sys-blue-light); }
+
+.g-emp-ava {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--sys-blue), var(--sys-indigo));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; flex-shrink: 0; margin-right: 10px;
+    box-shadow: 0 1px 4px rgba(0,122,255,0.2);
+    transition: box-shadow 0.2s var(--ease-fast), transform 0.2s var(--ease-fast);
+}
+.g-emp-ava.type-apps {
+    background: linear-gradient(135deg, var(--sys-indigo), var(--sys-purple));
+}
+.g-emp-row:hover .g-emp-ava {
+    box-shadow: 0 3px 10px rgba(0,122,255,0.35);
+    transform: scale(1.05);
+}
+
+.g-emp-info { flex: 1; min-width: 0; }
+.g-emp-name {
+    font-weight: 600; font-size: 15px; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    letter-spacing: -0.01em;
+}
+.g-emp-sub {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--text-secondary);
+    margin-top: 1px;
+}
+.g-emp-type-badge {
+    display: inline-flex; align-items: center;
+    padding: 1px 7px; border-radius: 999px;
+    font-size: 10px; font-weight: 600;
+    flex-shrink: 0;
+}
+.g-emp-type-badge.op {
+    background: rgba(0,122,255,0.1); color: var(--sys-blue);
+}
+.g-emp-type-badge.apps {
+    background: rgba(88,86,214,0.1); color: var(--sys-indigo);
+}
+
+.g-emp-hours { font-size: 14px; font-weight: 700; white-space: nowrap; margin-left: auto; }
+.g-emp-hours.ok { color: var(--sys-green); }
+.g-emp-hours.warn { color: var(--sys-orange); }
+.g-emp-hours.over { color: var(--sys-red); }
+
+/* ===== TIMELINE ===== */
+.g-timeline { display: flex; flex-direction: column; overflow: hidden; }
+
+.g-tl-header-wrap {
+    height: var(--header-h); overflow: hidden; flex-shrink: 0;
+    border-bottom: 2px solid var(--border);
+    background: var(--bg-secondary);
+}
+.g-tl-header { display: flex; height: 100%; }
+
+.g-day-bg {
+    flex-shrink: 0; height: 100%; position: relative;
+    /* Жирная вертикальная линия между днями */
+    border-right: 4px solid rgba(60,60,67,0.22);
+    /* Зебра — чётные дни с явным фоном */
+}
+.g-day-bg.day-odd {
+    background: rgba(0,0,0,0.035);
+}
+.dark-theme .g-day-bg.day-odd {
+    background: rgba(255,255,255,0.04);
+}
+.g-day-bg.day-even {
+    background: transparent;
+}
+.g-day-bg.today-bg { background: rgba(0,122,255,0.06); }
+
+/* Жесткая зебра — фон на всю строку */
+.g-tl-row {
+    height: var(--row-h);
+    border-bottom: 1px solid var(--border);
+    position: relative; display: flex;
+    transition: background 0.1s;
+    background: linear-gradient(to right, transparent, rgba(0,0,0,0.018) 50%, transparent);
+}
+.g-tl-row .g-day-bg.day-odd {
+    background: rgba(0,0,0,0.035) !important;
+}
+.dark-theme .g-tl-row {
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.012) 50%, transparent);
+}
+.dark-theme .g-tl-row .g-day-bg.day-odd {
+    background: rgba(255,255,255,0.04) !important;
+}
+
+.g-day-col {
+    flex-shrink: 0; display: flex; flex-direction: column;
+    border-right: 4px solid rgba(60,60,67,0.22); position: relative;
+    transition: background 0.2s;
+}
+.dark-theme .g-day-col {
+    border-right-color: rgba(255,255,255,0.15);
+}
+.g-day-col.day-odd {
+    background: rgba(0,0,0,0.035);
+}
+.dark-theme .g-day-col.day-odd {
+    background: rgba(255,255,255,0.04);
+}
+.g-day-col.today-col { background: var(--sys-blue-light); }
+
+.g-day-label {
+    text-align: center; padding: 4px 0 6px;
+    font-size: 14px; color: var(--text-secondary);
+    font-weight: 600; line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+.g-day-label .today-badge {
+    background: linear-gradient(135deg, var(--sys-blue), var(--sys-indigo));
+    color: #fff; padding: 3px 10px; border-radius: 12px;
+    font-size: 13px; font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0,122,255,0.3);
+    letter-spacing: 0.02em;
+}
+
+.g-hours-row { display: flex; flex: 1; }
+.g-hour-cell {
+    flex-shrink: 0; width: var(--slot-width); text-align: center;
+    border-right: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== TIMELINE BODY ===== */
+.g-tl-body-wrap { flex: 1; overflow: auto; position: relative; }
+.g-tl-body { position: relative; }
+
+.g-tl-row {
+    height: var(--row-h);
+    border-bottom: 1px solid var(--border);
+    position: relative; display: flex;
+    transition: background 0.1s;
+}
+.g-tl-row:hover { background: var(--sys-blue-light); }.g-grid-line {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: var(--border); pointer-events: none;
+}
+.g-grid-line.half {
+    border-left: 1px dashed var(--border); background: transparent;
+    opacity: 0.5;
+}
+
+/* ===== AVAILABILITY ZONES ===== */
+.avail-zone {
+    position: absolute; top: 4px; bottom: 4px; border-radius: var(--radius-md);
+    pointer-events: none; z-index: 2; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 600; font-size: 13px;
+    line-height: 1.3; padding: 4px 8px;
+    overflow: hidden; white-space: nowrap; text-overflow: clip;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s;
+}
+.avail-zone .block-text {
+    position: relative; z-index: 2;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    display: block; text-align: center;
+    white-space: normal; word-break: break-word;
+    overflow-wrap: anywhere; max-width: 100%;
+}
+.avail-zone.az-avail { background: linear-gradient(135deg, #34C759, #30D158); }
+.avail-zone.az-study { background: linear-gradient(135deg, #5856D6, #AF52DE); }
+.avail-zone.az-vacation { background: linear-gradient(135deg, #5AC8FA, #007AFF); }
+.avail-zone.az-outside { background: linear-gradient(135deg, #8E8E93, #636366); }
+.avail-zone.az-pref-off { background: linear-gradient(135deg, #FF9F0A, #FF6723); }
+.avail-zone.az-other { background: linear-gradient(135deg, #BF5AF2, #9B59B6); }
+
+.monthly-zone { display: none; }
+
+/* ===== SHIFT BLOCKS — Red Apple Style ===== */
+.shift-blk {
+    position: absolute; top: 6px; bottom: 6px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #FF3B30 0%, #FF6B63 100%);
+    color: #fff; padding: 4px 8px;
+    font-size: 11px; cursor: pointer;
+    transition: all 0.2s var(--ease-fast);
+    box-shadow: 0 2px 10px rgba(255,59,48,0.25), 0 1px 3px rgba(0,0,0,0.06);
+    overflow: hidden;
+    display: flex; flex-direction: column; justify-content: center;
+    z-index: 10; user-select: none; touch-action: none;
+    -webkit-backdrop-filter: saturate(180%) blur(4px);
+    backdrop-filter: saturate(180%) blur(4px);
+}
+.shift-blk:hover {
+    transform: scale(1.03) translateY(-1px);
+    box-shadow: 0 4px 18px rgba(255,59,48,0.35), 0 2px 6px rgba(0,0,0,0.1);
+    z-index: 20;
+}
+.shift-blk:active {
+    transform: scale(0.98);
+}
+.shift-blk.selected {
+    outline: 2px solid var(--sys-orange);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(255,159,10,0.2), 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.shift-blk.type-apps {
+    background: linear-gradient(135deg, #FF9F0A 0%, #FFB340 100%);
+    box-shadow: 0 2px 10px rgba(255,159,10,0.25), 0 1px 3px rgba(0,0,0,0.06);
+}
+.shift-blk.type-apps:hover {
+    box-shadow: 0 4px 18px rgba(255,159,10,0.35), 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.shift-blk.dragging {
+    opacity: 0.6; z-index: 30; cursor: grabbing;
+    border: 2px dashed rgba(255,255,255,0.5);
+    transform: scale(1.05);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+.shift-blk.conflict-hard {
+    border: 2px solid var(--sys-red);
+    animation: pulse-red 1.5s ease-in-out infinite;
+}
+.shift-blk.conflict-soft {
+    border: 2px solid var(--sys-orange);
+}
+.shift-blk.conflict-over {
+    outline: 2px solid var(--sys-orange);
+    outline-offset: 2px;
+}
+
+.shift-time {
+    font-weight: 700; font-size: 14px;
+    white-space: nowrap; line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.shift-note {
+    font-size: 12px; opacity: 0.85;
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; line-height: 1.3;
+}
+
+/* Delete button — iOS style */
+.shift-del {
+    position: absolute; top: 3px; right: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(4px);
+    color: #fff; display: none;
+    align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; z-index: 25;
+    transition: all 0.15s var(--ease-fast);
+    -webkit-backdrop-filter: blur(4px);
+}
+.shift-blk:hover .shift-del { display: flex; }
+.shift-del:hover {
+    background: rgba(255,59,48,0.7);
+    transform: scale(1.15);
+}
+
+/* Resize handles */
+.shift-resize {
+    position: absolute; top: 0; bottom: 0;
+    width: 8px; cursor: ew-resize; z-index: 26;
+}
+.shift-resize.left { left: 0; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.shift-resize.right { right: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.shift-resize:hover { background: rgba(255,255,255,0.15); }
+
+/* ===== DRAG SELECTION & PREVIEWS ===== */
+.drag-sel {
+    position: absolute; top: 4px; bottom: 4px;
+    border-radius: var(--radius-md);
+    background: rgba(255,59,48,0.22);
+    border: 2.5px solid var(--sys-red);
+    pointer-events: none; z-index: 15;
+    display: none;
+    box-shadow: 0 0 0 6px rgba(255,59,48,0.10), 0 0 20px rgba(255,59,48,0.12);
+}
+.drag-sel-time {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff; font-weight: 800;
+    font-size: 11px; white-space: nowrap;
+    pointer-events: none; z-index: 16;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    background: var(--sys-red);
+    padding: 2px 8px; border-radius: 8px;
+}
+
+.drag-preview {
+    position: absolute; top: 4px; bottom: 4px;
+    border-radius: var(--radius-md);
+    background: rgba(255,59,48,0.30);
+    border: 2.5px dashed var(--sys-red);
+    pointer-events: none; z-index: 15; display: none;
+    box-shadow: 0 0 0 6px rgba(255,59,48,0.12), 0 0 20px rgba(255,59,48,0.18);
+}
+.drag-preview-time {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff; font-weight: 800;
+    font-size: 12px; white-space: nowrap;
+    pointer-events: none; z-index: 16;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    background: var(--sys-red);
+    padding: 2px 8px; border-radius: 8px;
+}
+
+.drag-time-tooltip {
+    position: absolute; pointer-events: none; z-index: 999;
+    background: linear-gradient(135deg, var(--sys-red), #C81E1E);
+    color: #fff; padding: 5px 12px; border-radius: 10px;
+    font-size: 13px; font-weight: 800; white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(255,59,48,0.35);
+    transform: translateX(-50%);
+    display: none;
+    animation: tooltipFadeIn 0.2s var(--ease-fast);
+}
+@keyframes tooltipFadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(255,59,48,0); }
+}
+
+/* ===== LEGEND ===== */
+.g-legend {
+    display: flex; gap: 14px; padding: 12px 18px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap; flex-shrink: 0;
+}
+.g-leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.g-leg-c { width: 18px; height: 14px; border-radius: 4px; }
+.g-leg-c.lc-avail { background: linear-gradient(135deg, #34C759, #30D158); }
+.g-leg-c.lc-shift { background: linear-gradient(135deg, #FF3B30, #FF6B63); }
+.g-leg-c.lc-study { background: linear-gradient(135deg, #5856D6, #AF52DE); }
+.g-leg-c.lc-vac   { background: linear-gradient(135deg, #5AC8FA, #007AFF); }
+.g-leg-c.lc-pref  { background: linear-gradient(135deg, #FF9F0A, #FF6723); }
+.g-leg-c.lc-conf  { background: linear-gradient(135deg, #FF3B30, #C81E1E); }
+
+/* ===== MONTHLY PREFERENCES ===== */
+.g-monthly-prefs {
+    margin-top: 12px;
+    padding: 0 0 12px;
+}
+.monthly-pref-shell {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.dark-theme .monthly-pref-shell { background: var(--bg-secondary); }
+.monthly-pref-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s;
+}
+.monthly-pref-header:hover { background: var(--sys-blue-light); }
+.monthly-pref-header.open { border-bottom-color: var(--border); }
+.monthly-pref-title {
+    font-size: 14px; font-weight: 700;
+    color: var(--text-primary); margin: 0;
+    letter-spacing: -0.02em;
+}
+.monthly-pref-chevron {
+    font-size: 14px; color: var(--text-tertiary);
+    transition: transform 0.2s var(--ease-fast);
+}
+.monthly-pref-chevron.rotated { transform: rotate(180deg); }
+.monthly-pref-body { padding: 0; }
+
+/* Employee cards */
+.mp-emp-card {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+}
+.mp-emp-card:last-child { border-bottom: none; }
+.mp-emp-name {
+    font-size: 13px; font-weight: 700;
+    color: var(--text-primary); margin-bottom: 8px;
+    letter-spacing: -0.01em;
+}
+.mp-pref-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-primary);
+    transition: background 0.12s;
+}
+.mp-pref-item:hover { background: var(--sys-blue-light); }
+.mp-pref-item:last-child { margin-bottom: 0; }
+
+/* Icon badges */
+.mp-pref-icon {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+}
+.mp-pref-icon.not-before {
+    background: rgba(88,86,214,0.1);
+}
+.mp-pref-icon.not-after {
+    background: rgba(255,159,10,0.1);
+}
+.mp-pref-icon.prefer-off {
+    background: rgba(255,59,48,0.1);
+}
+.mp-pref-icon.other {
+    background: rgba(191,90,242,0.1);
+}
+
+.mp-pref-text {
+    flex: 1; min-width: 0;
+}
+.mp-pref-label {
+    display: block; font-weight: 500;
+}
+.mp-pref-time {
+    font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.mp-pref-note {
+    display: block; font-size: 11px;
+    color: var(--text-secondary); margin-top: 2px;
+}
+
+/* ===== MODAL — Compact Apple Style (Refined) ===== */
+.modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s var(--ease-normal), visibility 0.3s;
+}
+.modal-backdrop.open {
+    opacity: 1; visibility: visible;
+}
+.modal-dialog {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    padding: 0;
+    width: 92%; max-width: 420px;
+    box-shadow: var(--shadow-xl);
+    transform: scale(0.94) translateY(16px);
+    opacity: 0;
+    transition: transform 0.35s var(--ease-spring), opacity 0.25s var(--ease-normal);
+    overflow: hidden;
+}
+.modal-backdrop.open .modal-dialog {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* Scrollable modal — body scrolls, header & footer stay fixed */
+.modal-dialog.modal-scrollable {
+    max-height: min(720px, 85vh);
+    max-width: min(460px, 92vw);
+    display: flex;
+    flex-direction: column;
+}
+.modal-dialog.modal-scrollable > .modal-header {
+    flex-shrink: 0;
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+/* Body form — take all available space, scroll when needed */
+.modal-dialog.modal-scrollable form.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding-bottom: 8px;
+    scroll-behavior: smooth;
+}
+
+/* Footer — pinned to bottom */
+.modal-dialog.modal-scrollable > .modal-footer {
+    flex-shrink: 0;
+}
+
+/* --- Responsive sizing tiers --- */
+/* Tablet: slightly wider */
+@media (min-width: 768px) {
+    .modal-dialog {
+        /* Tablet: wider than base */
+    max-width: 460px;
+    }
+}
+
+/* 16:9 landscape: proportional — not crude 75vw stretch */
+@media (min-width: 1280px) and (min-height: 600px) and (max-height: 1000px) {
+    .modal-dialog.modal-scrollable {
+        max-height: min(740px, 80vh);
+        max-width: min(500px, 40vw);
+    }
+    .modal-dialog {
+        max-width: min(420px, 36vw);
+    }
+}
+
+/* Very tall screens */
+@media (min-height: 1000px) {
+    .modal-dialog.modal-scrollable {
+        max-height: min(900px, 80vh);
+    }
+}
+
+/* --- Scrollbar — minimal --- */
+.modal-dialog.modal-scrollable form.modal-body::-webkit-scrollbar {
+    width: 5px;
+}
+.modal-dialog.modal-scrollable form.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.modal-dialog.modal-scrollable form.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 3px;
+}
+.modal-dialog.modal-scrollable form.modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.3);
+}
+.dark-theme .modal-dialog.modal-scrollable form.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+}
+.dark-theme .modal-dialog.modal-scrollable form.modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.35);
+}
+
+/* --- Entrance animation --- */
+.modal-backdrop.open .modal-dialog {
+    animation: modalSlideInApple 0.35s var(--ease-spring) forwards;
+}
+.modal-dialog {
+    /* Starting state (invisible) — transition handles non-animation cases */
+    transform: scale(0.94) translateY(16px);
+    opacity: 0;
+}
+
+@keyframes modalSlideInApple {
+    from {
+        opacity: 0;
+        transform: scale(0.94) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.mod-title {
+    font-size: 20px; font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+.modal-close-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: var(--bg-secondary);
+    cursor: pointer; font-size: 18px;
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s var(--ease-fast);
+    flex-shrink: 0;
+}
+.modal-close-btn:hover { background: var(--border); color: var(--text-primary); }
+
+.modal-body {
+    padding: 20px 24px;
+}
+
+.fg { margin-bottom: 14px; }
+.fg-label {
+    display: block; font-weight: 600; font-size: 14px;
+    color: var(--text-secondary); margin-bottom: 5px;
+    letter-spacing: 0.01em;
+}
+.fg-input, .fg-select {
+    width: 100%; padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 16px; font-family: var(--font-stack);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+}
+.fg-input:focus, .fg-select:focus {
+    outline: none;
+    border-color: var(--sys-blue);
+    box-shadow: 0 0 0 3px var(--sys-blue-light);
+}
+.fg-ro { background: var(--bg-secondary) !important; cursor: default; border-color: transparent !important; }
+.fg-input::placeholder { color: var(--text-tertiary); }
+
+.time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+
+.modal-footer {
+    padding: 14px 24px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+    display: flex; gap: 10px;
+}
+
+/* Apple-style buttons */
+.mb {
+    flex: 1; padding: 12px 18px; border-radius: var(--radius-sm);
+    font-weight: 600; font-size: 15px; cursor: pointer;
+    transition: all 0.15s var(--ease-fast);
+    border: none; text-align: center;
+    font-family: var(--font-stack);
+    -webkit-tap-highlight-color: transparent;
+}
+.mb:active { transform: scale(0.97); }
+.mb-primary {
+    background: linear-gradient(135deg, var(--sys-blue), var(--sys-indigo));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,122,255,0.25);
+}
+.mb-primary:hover {
+    box-shadow: 0 4px 14px rgba(0,122,255,0.35);
+    transform: translateY(-1px);
+}
+.mb-secondary {
+    background: var(--bg-secondary);
+    color: var(--sys-blue);
+    border: 1px solid var(--border);
+}
+.mb-secondary:hover { background: var(--border); }
+.mb-danger {
+    background: var(--sys-red);
+    color: #fff;
+}
+.mb-danger:hover { background: var(--sys-red-hover); }
+
+/* ===== TOAST — Apple Notification Style ===== */
+.g-toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--bg-elevated);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    padding: 14px 20px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--sys-green);
+    display: flex; align-items: center; gap: 10px;
+    z-index: 2000;
+    transform: translateY(120px); opacity: 0;
+    transition: all 0.35s var(--ease-spring);
+    color: var(--text-primary); font-size: 14px;
+    font-weight: 500;
+}
+.g-toast.show { transform: translateY(0); opacity: 1; }
+.g-toast.error { border-left-color: var(--sys-red); }
+
+/* ===== KEYBOARD SHORTCUTS PANEL ===== */
+.sc-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+}
+.sc-box {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    padding: 20px; width: 90%; max-width: 380px;
+    box-shadow: var(--shadow-xl);
+}
+.sc-head {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 14px;
+}
+.sc-head h3 {
+    margin: 0; font-size: 17px; font-weight: 700;
+    color: var(--text-primary); letter-spacing: -0.02em;
+}
+.sc-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: var(--bg-secondary);
+    cursor: pointer; font-size: 18px; color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s var(--ease-fast);
+}
+.sc-close:hover { background: var(--border); }
+.sc-list { display: grid; gap: 8px; }
+.sc-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+}
+.sc-keys { display: flex; gap: 4px; }
+.sc-desc { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.kbd-hint {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 24px; height: 22px; padding: 0 6px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg-surface); font-size: 11px; font-weight: 700;
+    color: var(--text-secondary);
+    font-family: var(--font-stack);
+    box-shadow: 0 1px 0 var(--border);
+}
+
+/* ===== ANIMATIONS ===== */
+.shift-blk-enter {
+    animation: shiftSlideIn 0.3s var(--ease-spring);
+}
+@keyframes shiftSlideIn {
+    from { opacity: 0; transform: scaleX(0); }
+    to   { opacity: 1; transform: scaleX(1); }
+}
+
+/* ===== SCROLLBARS — Apple Style ===== */
+.g-tl-body-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+.g-tl-body-wrap::-webkit-scrollbar-track { background: transparent; }
+.g-tl-body-wrap::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15); border-radius: 4px;
+}
+.g-tl-body-wrap::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+.dark-theme .g-tl-body-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+.dark-theme .g-tl-body-wrap::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
+
+.g-emp-list::-webkit-scrollbar { width: 6px; }
+.g-emp-list::-webkit-scrollbar-track { background: transparent; }
+.g-emp-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+
+/* ===== ZOOM CONTROLS ===== */
+.zoom-controls { display: flex; align-items: center; gap: 4px; }
+.zoom-btn {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer; font-size: 16px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s var(--ease-fast);
+}
+.zoom-btn:hover {
+    border-color: var(--sys-blue); color: var(--sys-blue);
+    background: var(--sys-blue-light);
+}
+.zoom-btn:active { transform: scale(0.93); }
+.zoom-lbl {
+    font-size: 11px; color: var(--text-tertiary);
+    min-width: 36px; text-align: center; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+    .gantt-grid { grid-template-columns: 240px 1fr; --sidebar-w: 240px; }
+    .gantt-wrap { height: calc(100vh - 230px); min-height: 350px; }
+}
+@media (max-width: 768px) {
+    .gantt-grid { grid-template-columns: 180px 1fr; --sidebar-w: 180px; }
+    .g-emp-ava { width: 28px; height: 28px; font-size: 10px; }
+    .g-emp-type-badge { font-size: 9px; padding: 1px 5px; }
+    .g-legend { gap: 8px; }
+    .period-lbl { min-width: 140px; font-size: 13px; }
+    .zoom-lbl { display: none; }
+    .modal-dialog { max-width: 95%; }
+}
+@media (max-width: 480px) {
+    .gantt-grid { grid-template-columns: 140px 1fr; --sidebar-w: 140px; }
+    .g-emp-sub { display: none; }
+    .gantt-nav { flex-wrap: wrap; gap: 8px; }
+    .nav-grp { width: 100%; justify-content: space-between; }
+    .time-grid { grid-template-columns: 1fr; }
+    .g-toast { left: 16px; right: 16px; bottom: 16px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gantt-wrap" id="ganttWrap">
+    <!-- Navigation bar -->
+    <div class="gantt-nav">
+        <div class="nav-grp">
+            <button class="nav-b" onclick="navigate(-1)" title="Назад" aria-label="Назад">&#x2190;</button>
+            <span class="period-lbl" id="periodLabel">Загрузка...</span>
+            <button class="nav-b" onclick="navigate(1)" title="Вперёд" aria-label="Вперёд">&#x2192;</button>
+            <label class="weekends-toggle" title="Показывать выходные">
+                <input type="checkbox" id="showWeekendsCb" onchange="onFilterChange()" checked>
+                <span class="weekends-toggle-track"></span>
+                <span class="weekends-toggle-label">показывать выходные</span>
+            </label>
+        </div>
+        <div class="nav-grp">
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()" title="Увеличить" aria-label="Увеличить">+</button>
+                <span class="zoom-lbl" id="zoomLbl">100%</span>
+                <button class="zoom-btn" onclick="zoomOut()" title="Уменьшить" aria-label="Уменьить">&#x2212;</button>
+            </div>
+            <div class="sync-ind saved" id="syncInd">
+                <span id="syncIcon">&#10003;</span>
+                <span id="syncText">Готово</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid: sidebar + timeline -->
+    <div class="gantt-grid">
+        <!-- Sidebar -->
+        <div class="g-sidebar">
+            <div class="g-sidebar-head">
+                <input type="text" class="g-search" placeholder="Поиск..." id="empSearch" oninput="onFilterChange()" aria-label="Поиск сотрудника">
+                <select class="g-filter" id="typeFilter" onchange="onFilterChange()" aria-label="Фильтр по типу">
+                    <option value="">Все</option>
+                    <option value="operator">Операторы</option>
+                    <option value="applications_only">Заявки</option>
+                </select>
+            </div>
+            <div class="g-emp-list" id="empListEl"></div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="g-timeline">
+            <div class="g-tl-header-wrap">
+                <div class="g-tl-header" id="tlHeader"></div>
+            </div>
+            <div class="g-tl-body-wrap" id="tlBodyWrap">
+                <div class="g-tl-body" id="tlBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="g-legend">
+        <div class="g-leg-item"><div class="g-leg-c lc-avail"></div><span>Доступен</span></div>
+        <div class="g-leg-item"><div class="g-leg-c lc-shift"></div><span>Смена</span></div>
+        <div class="g-leg-item"><div class="g-leg-c lc-study"></div><span>Учёба</span></div>
+        <div class="g-leg-item"><div class="g-leg-c lc-vac"></div><span>Отпуск</span></div>
+        <div class="g-leg-item"><div class="g-leg-c lc-pref"></div><span>Пожелание</span></div>
+        <div class="g-leg-item"><div class="g-leg-c lc-conf"></div><span>Конфликт</span></div>
+    </div>
+</div>
+
+<!-- Monthly Preferences -->
+<div class="g-monthly-prefs" id="monthlyPrefsSection" style="display:none;"></div>
+
+<!-- Shift Modal — Fixed Structure -->
+<div class="modal-backdrop" id="shiftModal">
+    <div class="modal-dialog modal-scrollable" role="dialog" aria-modal="true" aria-labelledby="modTitle">
+        <div class="modal-header">
+            <h3 class="mod-title" id="modTitle">Назначить смену</h3>
+            <button type="button" class="modal-close-btn" onclick="closeModal()" aria-label="Закрыть">&times;</button>
+        </div>
+        <form id="shiftForm" class="modal-body" onsubmit="onSaveShift(event)">
+            <input type="hidden" id="fShiftId">
+            <div class="fg">
+                <label class="fg-label" for="fEmpName">Сотрудник</label>
+                <input type="text" id="fEmpName" class="fg-input fg-ro" readonly>
+            </div>
+            <div class="fg">
+                <label class="fg-label">Дата</label>
+                <input type="text" id="fDateDisplay" class="fg-input fg-ro" readonly>
+                <input type="hidden" id="fDate">
+            </div>
+            <div class="time-grid">
+                <div class="fg">
+                    <label class="fg-label" for="fStart">Начало</label>
+                    <input type="time" id="fStart" class="fg-input" step="1800" oninput="onTimeInput(this)" required>
+                </div>
+                <div class="fg">
+                    <label class="fg-label" for="fEnd">Окончание</label>
+                    <input type="time" id="fEnd" class="fg-input" step="1800" oninput="onTimeInput(this)" required>
+                </div>
+            </div>
+        </form>
+        <div class="modal-footer">
+            <button type="button" class="mb mb-danger" id="modDeleteBtn" onclick="onDeleteShift()" style="display:none;">Удалить</button>
+            <button type="button" class="mb mb-secondary" onclick="closeModal()">Отмена</button>
+            <button type="submit" class="mb mb-primary" form="shiftForm">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="g-toast" id="gToast"><span id="toastMsg"></span></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Move modals to <body> for correct viewport fixed positioning
+document.addEventListener('DOMContentLoaded', function() {
+    var body = document.body;
+    document.querySelectorAll('.modal-backdrop').forEach(function(modal) {
+        body.appendChild(modal);
+    });
+    if (typeof ModalSystem !== 'undefined' && ModalSystem.open) {
+        var origOpen = ModalSystem.open;
+        ModalSystem.open = function(id) {
+            var el = typeof id === 'string' ? document.getElementById(id) : id;
+            if (!el) return;
+            if (el.parentElement !== body) body.appendChild(el);
+            el.style.position = 'fixed';
+            el.style.top = '0';
+            el.style.right = '0';
+            el.style.bottom = '0';
+            el.style.left = '0';
+            el.style.width = '100vw';
+            el.style.height = '100vh';
+            el.style.zIndex = '1000';
+            origOpen.call(ModalSystem, id);
+        };
+    }
+});
+
+// =====================================================================
+// SCHEDULE EDITOR v3 — Apple-Style Gantt Editor
+// =====================================================================
+(function() {
+'use strict';
+
+// ===== STATE =====
+const S = {
+    employees: [], shifts: [], availability: {},
+    studyConstraints: [], vacations: [], preferences: [],
+    monthlyPreferences: [], holidays: [], nonWorkingDates: [],
+    employeeTargetHours: {},
+    viewMode: 'month', currentDate: new Date(),
+    selectedShift: null,
+    searchQuery: '', typeFilter: '', hideEmpty: false, showWeekends: true,
+    drag: { active: false, mode: null, empName: null, dateStr: null, startSlot: 0, endSlot: 0, shiftId: null, origShift: null },
+    moveDrag: { active: false, shiftId: null, moved: false, suppressClickUntil: 0 },
+    isLoading: true, syncStatus: 'saved', theme: 'light', zoomLevel: 1.0,
+    RATE_LIMITS: { 0.25: 2, 0.5: 4, 0.75: 6, 1.0: 8 },
+};
+let shiftActionPending = false;
+
+// Embedded Jinja data
+const J_EMPLOYEES = {{ employees_json | safe }};
+const J_HOLIDAYS = {{ holidays_json | safe }};
+const J_MONTHLY_PREFS = {{ monthly_preferences_json | safe }};
+const J_YEAR = {{ year }};
+const J_MONTH = {{ month }};
+
+// ===== MODAL MANAGER (self-contained) =====
+const ModalMgr = {
+    open(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        const firstInput = el.querySelector('input:not([type=hidden]), select, textarea, button:not([type=button])');
+        if (firstInput) setTimeout(() => firstInput.focus(), 150);
+    },
+    close(id) {
+        const el = typeof id === 'string' ? document.getElementById(id) : id;
+        if (!el) return;
+        el.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+};
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', async () => {
+    loadTheme();
+    S.currentDate = new Date(J_YEAR, J_MONTH - 1, 1);
+    const now = new Date();
+    if (now.getFullYear() === J_YEAR && now.getMonth() === J_MONTH - 1) {
+        S.currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+    setupKeyboard();
+    setupScrollSync();
+    setupBackdropClose();
+    await loadDataForCurrentView();
+    render();
+});
+
+function setupBackdropClose() {
+    const modal = document.getElementById('shiftModal');
+    if (modal) {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeModal();
+        });
+    }
+}
+
+function setupKeyboard() {
+    document.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+        switch (e.key) {
+            case 'ArrowLeft':  e.preventDefault(); navigate(-1); break;
+            case 'ArrowRight': e.preventDefault(); navigate(1); break;
+            case 't': case 'T': goToToday(); break;
+            case 'd': case 'D': setViewMode('day'); break;
+            case 'w': case 'W': setViewMode('week'); break;
+            case 'm': case 'M': setViewMode('month'); break;
+            case 'Escape': closeModal(); break;
+        }
+    });
+}
+
+function setupScrollSync() {
+    const bodyWrap = document.getElementById('tlBodyWrap');
+    const headerWrap = document.querySelector('.g-tl-header-wrap');
+    const empList = document.getElementById('empListEl');
+    if (!bodyWrap || !empList) return;
+
+    // The timeline body wrap is the ONLY scroll source — both axes.
+    // Sync header (horizontal) and sidebar (vertical) instantly on its scroll.
+    bodyWrap.addEventListener('scroll', () => {
+        headerWrap.scrollLeft = bodyWrap.scrollLeft;
+        empList.scrollTop = bodyWrap.scrollTop;
+    });
+
+    // Forward sidebar wheel events to the timeline — single scroll source
+    empList.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        bodyWrap.scrollBy({ top: e.deltaY, left: e.deltaX });
+    }, { passive: false });
+
+    // Horizontal wheel on header -> timeline
+    headerWrap.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        bodyWrap.scrollBy({ left: e.deltaX, top: 0 });
+    }, { passive: false });
+}
+
+// ===== THEME =====
+function loadTheme() {
+    const c = document.cookie.split('; ').find(r => r.startsWith('theme='));
+    if (c && c.split('=')[1] === 'dark') {
+        document.body.classList.add('dark-theme');
+        S.theme = 'dark';
+    }
+}
+
+// ===== ZOOM (exposed to window for inline onclick) =====
+function applyZoom() {
+    document.documentElement.style.setProperty('--slot-width', `${44 * S.zoomLevel}px`);
+    document.documentElement.style.setProperty('--row-h', `${56 * S.zoomLevel}px`);
+    const lbl = document.getElementById('zoomLbl');
+    if (lbl) lbl.textContent = `${Math.round(S.zoomLevel * 100)}%`;
+}
+
+// ===== ZOOM =====
+window.zoomIn = function() { S.zoomLevel = Math.min(S.zoomLevel + 0.25, 2.0); applyZoom(); }
+window.zoomOut = function() { S.zoomLevel = Math.max(S.zoomLevel - 0.25, 0.5); applyZoom(); }
+function applyZoom() {
+    document.documentElement.style.setProperty('--slot-width', `${44 * S.zoomLevel}px`);
+    document.documentElement.style.setProperty('--row-h', `${56 * S.zoomLevel}px`);
+    const lbl = document.getElementById('zoomLbl');
+    if (lbl) lbl.textContent = `${Math.round(S.zoomLevel * 100)}%`;
+}
+
+// Shortcuts
+window.showShortcuts = function() {
+    const overlay = document.getElementById('shortcutsOverlay');
+    if (overlay) { overlay.style.display = overlay.style.display === 'none' ? 'flex' : 'none'; return; }
+    const shortcuts = [
+        ['←', '→', 'Навигация'], ['T', '—', 'Сегодня'],
+        ['D', '—', 'День'], ['W', '—', 'Неделя'], ['M', '—', 'Месяц'],
+        ['Esc', '—', 'Закрыть окно'], ['+', '−', 'Масштаб'],
+    ];
+    const rows = shortcuts.map(([k1, k2, desc]) =>
+        `<div class="sc-row"><div class="sc-keys"><span class="kbd-hint">${k1}</span>${k2 !== '—' ? ' <span class="kbd-hint">' + k2 + '</span>' : ''}</div><div class="sc-desc">${desc}</div></div>`
+    ).join('');
+    document.body.insertAdjacentHTML('beforeend',
+        `<div class="sc-overlay" id="shortcutsOverlay" onclick="this.remove()">
+            <div class="sc-box" onclick="event.stopPropagation()">
+                <div class="sc-head"><h3>Горячие клавиши</h3><button class="sc-close" onclick="document.getElementById('shortcutsOverlay').remove()">&times;</button></div>
+                <div class="sc-list">${rows}</div>
+            </div>
+        </div>`
+    );
+}
+
+// ===== DATA LOADING =====
+async function loadDataForCurrentView() {
+    const { start, end } = getDateRange();
+    const y = S.currentDate.getFullYear(), m = S.currentDate.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const monthStart = new Date(y, m, 1);
+    const monthEnd = new Date(y, m, daysInMonth);
+
+    S.isLoading = true; setSyncStatus('saving');
+    try {
+        // Fetch view-scoped data (availability, etc) and full-month shifts in parallel
+        const viewUrl = `/api/v1/schedule/editor/data?start_date=${fmtDate(start)}&end_date=${fmtDate(end)}&year=${y}&month=${m + 1}`;
+        const monthUrl = `/api/v1/schedule/editor/data?start_date=${fmtDate(monthStart)}&end_date=${fmtDate(monthEnd)}&year=${y}&month=${m + 1}`;
+
+        const [viewResp, monthResp] = await Promise.all([
+            fetch(viewUrl),
+            fetch(monthUrl)
+        ]);
+
+        if (!viewResp.ok) throw new Error(`View data HTTP ${viewResp.status}`);
+        if (!monthResp.ok) throw new Error(`Month data HTTP ${monthResp.status}`);
+
+        const viewData = await viewResp.json();
+        const monthData = await monthResp.json();
+
+        // Use full-month shifts for correct hour counting across all views
+        const allShifts = monthData.shifts || [];
+
+        Object.assign(S, {
+            employees: viewData.employees || [],
+            shifts: allShifts,
+            availability: viewData.availability || {},
+            studyConstraints: viewData.study_constraints || [],
+            vacations: viewData.vacations || [],
+            preferences: viewData.schedule_preferences || [],
+            monthlyPreferences: viewData.monthly_preferences || [],
+            holidays: viewData.holidays || [],
+            nonWorkingDates: viewData.non_working_dates || [],
+            employeeTargetHours: monthData.employee_target_hours || {},
+            isLoading: false
+        });
+        setSyncStatus('saved');
+    } catch (err) {
+        console.error('Load error:', err);
+        S.isLoading = false; setSyncStatus('error');
+        toast('Ошибка загрузки данных', true);
+    }
+}
+
+// ===== DATE HELPERS =====
+function fmtDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function parseDate(s) { const p = s.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function isSameDay(a, b) { return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function isNonWorking(ds) { return S.nonWorkingDates.includes(ds); }
+function getMonday(d) { const r = new Date(d); const day = r.getDay(); const diff = day === 0 ? -6 : 1 - day; r.setDate(r.getDate() + diff); return r; }
+
+function getVisibleDates() {
+    const dates = [];
+    if (S.viewMode === 'day') {
+        dates.push(new Date(S.currentDate));
+    } else if (S.viewMode === 'week') {
+        const mon = getMonday(S.currentDate);
+        for (let i = 0; i < 7; i++) {
+            const d = addDays(mon, i); const dow = d.getDay();
+            if (dow >= 1 && dow <= 5 || S.showWeekends) dates.push(d);
+        }
+        if (dates.length === 0) for (let i = 0; i < 5; i++) dates.push(addDays(mon, i));
+    } else {
+        const y = S.currentDate.getFullYear(), m = S.currentDate.getMonth();
+        const daysInMonth = new Date(y, m+1, 0).getDate();
+        for (let i = 1; i <= daysInMonth; i++) {
+            const d = new Date(y, m, i); const ds = fmtDate(d);
+            const dow = d.getDay(); const isWE = dow === 0 || dow === 6;
+            if (isWE) { if (S.showWeekends) dates.push(d); }
+            else dates.push(d);
+        }
+    }
+    return dates;
+}
+
+function getDateRange() {
+    if (S.viewMode === 'day') return { start: new Date(S.currentDate), end: new Date(S.currentDate) };
+    if (S.viewMode === 'week') { const mon = getMonday(S.currentDate); return { start: mon, end: addDays(mon, 6) }; }
+    const y = S.currentDate.getFullYear(), m = S.currentDate.getMonth();
+    return { start: new Date(y, m, 1), end: new Date(y, m+1, 0) };
+}
+
+function getHoursForDate(ds) {
+    const nw = isNonWorking(ds);
+    return { start: nw ? 9 : 8, end: nw ? 21 : 22 };
+}
+function getEmployeeTargetHours(name) { return Number(S.employeeTargetHours[name] || 0); }
+
+function getAssignedHours(empName) {
+    const y = S.currentDate.getFullYear(), m = S.currentDate.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const monthStart = fmtDate(new Date(y, m, 1));
+    const monthEnd = fmtDate(new Date(y, m, daysInMonth));
+    return S.shifts.filter(s =>
+        s.employee_name === empName && s.date >= monthStart && s.date <= monthEnd
+    ).reduce((sum, s) => sum + (timeToMin(s.end_time) - timeToMin(s.start_time)) / 60, 0);
+}
+function getAllDatesInRange(start, end) {
+    const dates = []; const cur = new Date(start);
+    while (cur <= end) { dates.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+    return dates;
+}
+
+function timeToMin(t) { const p = t.split(':'); return (+p[0]) * 60 + (+p[1]); }
+function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+
+function getSlotsForDate(ds) { return 28; }
+function getSlotWidth() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot-width')) || 44; }
+
+function getTotalTimelineWidth(dates) {
+    const sw = getSlotWidth();
+    let total = 0;
+    for (const d of dates) total += getSlotsForDate(fmtDate(d)) * sw;
+    return total;
+}
+
+// ===== PIXEL MATH (fixed coordinate system) =====
+function timeToPixel(timeStr, dateStr, dates) {
+    const sw = getSlotWidth();
+    let offset = 0;
+    for (const d of dates) {
+        const ds = fmtDate(d);
+        if (ds === dateStr) {
+            // Координаты всегда 08:00-22:00 независимо от статуса дня
+            return offset + (timeToMin(timeStr) - 8 * 60) / 30 * sw;
+        }
+        // Каждый день фиксировано 28 слотов (08:00-22:00)
+        offset += 28 * sw;
+    }
+    return offset;
+}
+
+function pixelToTime(xPixel, dates) {
+    const sw = getSlotWidth();
+    let offset = 0;
+    for (const d of dates) {
+        const ds = fmtDate(d);
+        const w = 28 * sw;
+        if (xPixel < offset + w) {
+            const localX = xPixel - offset;
+            const slot = Math.round(localX / sw);
+            const mins = 8 * 60 + slot * 30;
+            return { dateStr: ds, time: minToTime(Math.max(8*60, Math.min(mins, 22*60 - 30))) };
+        }
+        offset += w;
+    }
+    const lastD = dates[dates.length - 1];
+    const ds = fmtDate(lastD);
+    return { dateStr: ds, time: minToTime(22 * 60 - 30) };
+}
+
+// ===== RENDERING =====
+function render() {
+    const dates = getVisibleDates();
+    renderPeriodLabel(dates);
+    renderViewModeButtons();
+    renderHeader(dates);
+    renderSidebar(dates);
+    renderBody(dates);
+    renderMonthlyPreferencesSection();
+    requestAnimationFrame(() => attachShiftTooltips());
+}
+window.render = render;
+
+function renderPeriodLabel(dates) {
+    if (!dates.length) return;
+    const first = dates[0], last = dates[dates.length - 1];
+    const opts = { day: 'numeric', month: 'long' };
+    document.getElementById('periodLabel').textContent =
+        dates.length === 1 ? `${first.toLocaleDateString('ru-RU', opts)} ${first.getFullYear()}` :
+                             `${first.toLocaleDateString('ru-RU', opts)} — ${last.toLocaleDateString('ru-RU', opts)} ${first.getFullYear()}`;
+}
+
+function renderViewModeButtons() {
+    ['day','week','month'].forEach(m => {
+        const btn = document.getElementById(`view${m.charAt(0).toUpperCase()+m.slice(1)}Btn`);
+        if (btn) btn.classList.toggle('active', m === S.viewMode);
+    });
+}
+
+function renderHeader(dates) {
+    const sw = getSlotWidth();
+    const today = fmtDate(new Date());
+    const WK = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+    let html = '';
+    for (const d of dates) {
+        const ds = fmtDate(d);
+        const slots = getSlotsForDate(ds);
+        const w = slots * sw;
+        const isToday = ds === today;
+        const label = isToday ? `<span class="today-badge">${d.getDate()}</span> ${WK[d.getDay()]}` : `${d.getDate()} ${WK[d.getDay()]}`;
+        let hoursHtml = '';
+        for (let hr = 8; hr < 22; hr++) {
+            hoursHtml += `<div class="g-hour-cell" style="width:${sw}px">${String(hr).padStart(2,'0')}</div>`;
+            hoursHtml += `<div class="g-hour-cell half" style="width:${sw}px"></div>`;
+        }
+        html += `<div class="g-day-col ${isToday?'today-col':''}" style="width:${w}px">
+            <div class="g-day-label"><span class="nw-date">${d.getDate()} ${WK[d.getDay()]}</span><span class="nw-toggle ${isNonWorking(ds)?'active':''}" data-date="${ds}" onclick="toggleNonWorking('${ds}', this, event)" title="Кликните чтобы переключить">${isNonWorking(ds)?'🏖️ выходной':'💼 рабочий'}</span></div>
+            <div class="g-hours-row">${hoursHtml}</div>
+        </div>`;
+    }
+    document.getElementById('tlHeader').innerHTML = html;
+}
+
+function getFilteredEmployees(dates) {
+    let emps = [...S.employees];
+    if (S.searchQuery) { const q = S.searchQuery.toLowerCase(); emps = emps.filter(e => e.name.toLowerCase().includes(q)); }
+    if (S.typeFilter) emps = emps.filter(e => e.employee_type === S.typeFilter);
+    if (S.hideEmpty) {
+        const dateStrs = new Set(dates.map(d => fmtDate(d)));
+        emps = emps.filter(e => S.shifts.some(s => s.employee_name === e.name && dateStrs.has(s.date)));
+    }
+    // sort: operators first alphabetically, then applications-only alphabetically
+    emps.sort((a, b) => {
+        if (a.employee_type === b.employee_type) return a.name.localeCompare(b.name, 'ru');
+        return a.employee_type === 'operator' ? -1 : 1;
+    });
+    return emps;
+}
+
+function openEmployeeCalendar(name) {
+    const d = S.currentDate;
+    window.location.href = `/my-schedule?employee_name=${encodeURIComponent(name)}&year=${d.getFullYear()}&month=${d.getMonth() + 1}`;
+}
+window.openEmployeeCalendar = openEmployeeCalendar;
+
+function renderSidebar(dates) {
+    const emps = getFilteredEmployees(dates);
+    const el = document.getElementById('empListEl');
+    let html = '';
+    let lastType = null;
+    for (const emp of emps) {
+        // Insert separator when switching from operators to applications-only
+        if (lastType && lastType !== emp.employee_type) {
+            html += '<div class="g-emp-sep"></div>';
+        }
+        lastType = emp.employee_type;
+        const initials = emp.name.split(' ').map(n => n[0]||'').join('').toUpperCase().slice(0,2);
+        const typeCls = emp.employee_type === 'operator' ? 'op' : 'apps';
+        const typeLabel = emp.employee_type === 'operator' ? 'Оператор' : 'Заявки';
+        const avaCls = emp.employee_type === 'applications_only' ? ' type-apps' : '';
+        const target = getEmployeeTargetHours(emp.name);
+        const assigned = getAssignedHours(emp.name);
+        const pct = target > 0 ? Math.round(assigned / target * 100) : 0;
+        const pctClass = pct > 100 ? 'over' : pct > 80 ? 'warn' : 'ok';
+        html += `<div class="g-emp-row" data-emp="${escHtml(emp.name)}">
+            <div class="g-emp-ava${avaCls}">${initials}</div>
+            <div class="g-emp-info" onclick="openEmployeeCalendar('${escAttr(emp.name)}')" style="cursor:pointer;">
+                <div class="g-emp-name" title="${escHtml(emp.name)}">${escHtml(emp.name)}</div>
+                <div class="g-emp-sub"><span class="g-emp-type-badge ${typeCls}">${typeLabel}</span></div>
+            </div>
+            <div class="g-emp-hours ${pctClass}">${assigned.toFixed(0)}/${target.toFixed(0)}</div>
+        </div>`;
+    }
+    el.innerHTML = html;
+}
+
+function renderBody(dates) {
+    const emps = getFilteredEmployees(dates);
+    const sw = getSlotWidth();
+    const totalW = getTotalTimelineWidth(dates);
+    const today = fmtDate(new Date());
+    let html = '';
+
+    for (const emp of emps) {
+        let dayIdx = 0;
+        let rowHtml = '';
+        for (const d of dates) {
+            const ds = fmtDate(d);
+            const slots = getSlotsForDate(ds);
+            const w = slots * sw;
+            const isToday = ds === today;
+            const isOdd = dayIdx % 2 === 0;
+            let gridLines = '';
+            for (let i = 0; i < slots; i++) {
+                const isHalf = i % 2 === 1;
+                gridLines += `<div class="g-grid-line${isHalf?' half':''}" style="left:${i*sw}px"></div>`;
+            }
+            dayIdx++;
+            rowHtml += `<div class="g-day-bg ${isToday?'today-bg':''} ${isOdd?'day-odd':'day-even'}" style="width:${w}px" data-date="${ds}" data-emp="${escHtml(emp.name)}">${gridLines}</div>`;
+        }
+        rowHtml += renderAvailZones(emp.name, dates, sw);
+        rowHtml += renderShiftBlocks(emp.name, dates);
+        const empId = cssId(emp.name);
+        rowHtml += `<div class="drag-sel" id="dragSel-${empId}"><span class="drag-sel-time" id="dragSelTime-${empId}"></span></div>`;
+        rowHtml += `<div class="drag-preview" id="dragPrev-${empId}"><span class="drag-preview-time" id="dragPrevTime-${empId}"></span></div>`;
+        html += `<div class="g-tl-row" data-emp="${escHtml(emp.name)}" style="width:${totalW}px"
+                      onmousedown="window._editor.onRowMouseDown(event, '${escAttr(emp.name)}')">${rowHtml}</div>`;
+    }
+
+    const body = document.getElementById('tlBody');
+    body.innerHTML = html;
+    body.style.width = totalW + 'px';
+}
+
+// Subtract interval ranges from [start, end], returning remaining intervals
+function subtractIntervals(start, end, ranges) {
+    let result = [[start, end]];
+    for (const [rs, re] of ranges) {
+        const next = [];
+        for (const [a, b] of result) {
+            if (re <= a || rs >= b) { next.push([a, b]); continue; }
+            if (a < rs) next.push([a, Math.min(rs, b)]);
+            if (re < b) next.push([Math.max(re, a), b]);
+        }
+        result = next;
+    }
+    return result;
+}
+
+function getMonthlyPrefIntervalsForDate(empName, ds, dayStartMin, dayEndMin) {
+    const prefs = (S.monthlyPreferences || []).filter(p => p.employee_name === empName);
+    const result = [];
+    for (const p of prefs) {
+        if (p.preference_type === 'prefer_off') {
+            result.push([dayStartMin, dayEndMin]);
+        } else if (p.preference_type === 'not_before' && (p.start_time || p.time_value)) {
+            const t = timeToMin(p.start_time || p.time_value);
+            if (t < dayEndMin) result.push([dayStartMin, Math.min(t, dayEndMin)]);
+        } else if (p.preference_type === 'not_after' && (p.start_time || p.time_value)) {
+            const t = timeToMin(p.start_time || p.time_value);
+            if (t > dayStartMin) result.push([Math.max(t, dayStartMin), dayEndMin]);
+        }
+    }
+    return result;
+}
+
+function getBlockPrefIntervals(b, dayStartMin, dayEndMin) {
+    const intervals = [];
+    if (b.type === 'preference_off' && b.start && b.end) {
+        // Используем конкретное время из блока (например 18:00-20:00)
+        const s = Math.max(timeToMin(b.start), dayStartMin);
+        const e = Math.min(timeToMin(b.end), dayEndMin);
+        if (e > s) intervals.push([s, e]);
+    } else if (b.type === 'preference_off') {
+        // fallback: если время не задано — весь день
+        intervals.push([dayStartMin, dayEndMin]);
+    } else if (b.type === 'preference_not_before' && b.end) {
+        const t = timeToMin(b.end);
+        if (t <= dayStartMin) return intervals;
+        const subStart = dayStartMin;
+        const subEnd = Math.min(t, dayEndMin);
+        if (subEnd > subStart) intervals.push([subStart, subEnd]);
+    } else if (b.type === 'preference_not_after' && b.start) {
+        const t = timeToMin(b.start);
+        if (t >= dayEndMin) return intervals;
+        const subStart = Math.max(t, dayStartMin);
+        const subEnd = dayEndMin;
+        if (subEnd > subStart) intervals.push([subStart, subEnd]);
+    }
+    return intervals;
+}
+
+function renderAvailZones(empName, dates, sw) {
+    let html = ''; let offsetPx = 0;
+    for (const d of dates) {
+        const ds = fmtDate(d); const w = getSlotsForDate(ds) * sw;
+        // Координаты всегда 08:00-22:00 для консистентности
+        const dayStartMin = 8 * 60;
+        const dayEndMin = 22 * 60;
+        const avail = S.availability[ds]?.[empName];
+        let prefIntervals = [];
+        const prefTiles = [];
+        if (avail) {
+            for (const b of avail.blocks) {
+                prefIntervals = prefIntervals.concat(getBlockPrefIntervals(b, dayStartMin, dayEndMin));
+            }
+            for (const b of avail.blocks) {
+                if (b.type === 'preference_other') continue;
+                prefTiles.push({ type: b.type, start: b.start, end: b.end, note: b.note });
+            }
+        }
+        if (avail) {
+            // Render sliced availability zones
+            for (const z of avail.zones) {
+                const zStart = timeToMin(z.start);
+                const zEnd = timeToMin(z.end);
+                const slices = subtractIntervals(zStart, zEnd, prefIntervals);
+                for (const [s, e] of slices) {
+                    const left = offsetPx + (s - dayStartMin) / 30 * sw;
+                    const width = (e - s) / 30 * sw;
+                    const st = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+                    const et = `${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
+                    const text = getBlockText('available', z.note||'', st, et);
+                    html += `<div class="avail-zone az-avail" style="left:${left}px;width:${width}px" title="${escAttr(text)}"><span class="block-text">${escHtml(text)}</span></div>`;
+                }
+            }
+        }
+        // Render preference tiles
+        for (const p of prefTiles) {
+            const pStart = p.start ? timeToMin(p.start) : dayStartMin;
+            const pEnd = p.end ? timeToMin(p.end) : dayEndMin;
+            let cStart = pStart, cEnd = pEnd;
+            if (p.type === 'not_before') { cStart = dayStartMin; cEnd = pStart; }
+            else if (p.type === 'not_after') { cStart = pStart; cEnd = dayEndMin; }
+            if (cEnd <= cStart) continue;
+            const left = offsetPx + (cStart - dayStartMin) / 30 * sw;
+            const width = (cEnd - cStart) / 30 * sw;
+            const cls = getLabelClass(p.type);
+            const text = getBlockText(p.type, p.note,
+                p.start && p.end ? p.start : (p.type === 'not_before' ? cStart : cStart) !== undefined ?
+                    `${Math.floor(cStart/60)}:${String(cStart%60).padStart(2,'0')}` : '',
+                p.start && p.end ? p.end :
+                    `${Math.floor(cEnd/60)}:${String(cEnd%60).padStart(2,'0')}`
+            );
+            html += `<div class="avail-zone ${cls}" style="left:${left}px;width:${width}px" title="${escAttr(text)}"><span class="block-text">${escHtml(text)}</span></div>`;
+        }
+        offsetPx += w;
+    }
+    return html;
+}
+
+function renderShiftBlocks(empName, dates) {
+    let html = '';
+    for (const shift of S.shifts.filter(s => s.employee_name === empName)) {
+        if (!dates.some(d => fmtDate(d) === shift.date)) continue;
+        const left = timeToPixel(shift.start_time, shift.date, dates);
+        const right = timeToPixel(shift.end_time, shift.date, dates);
+        const width = Math.max(right - left, 24);
+        const typeCls = shift.shift_type === 'applications_only' ? ' type-apps' : '';
+        const sel = S.selectedShift && S.selectedShift.id === shift.id ? ' selected' : '';
+        const conflicts = detectConflicts(shift);
+        let confCls = '';
+        if (conflicts.hard) confCls = ' conflict-hard';
+        else if (conflicts.overlap) confCls = ' conflict-soft';
+        else if (conflicts.overHours) confCls = ' conflict-over';
+
+        html += `<div class="shift-blk shift-blk-enter${typeCls}${confCls}${sel}"
+                      style="left:${left}px;width:${width}px;"
+                      data-shift-id="${shift.id}"
+                      onmousedown="window._editor.onShiftMouseDown(event, ${shift.id})"
+                      onclick="window._editor.onShiftClick(event, ${shift.id})">
+            <div class="shift-resize left" onmousedown="window._editor.onResizeStart(event, ${shift.id}, 'left')"></div>
+            <div class="shift-time">${escHtml(shift.start_time)} — ${escHtml(shift.end_time)}</div>
+            ${shift.note ? `<div class="shift-note">${escHtml(shift.note)}</div>` : ''}
+            <div class="shift-del" onclick="window._editor.onShiftDelClick(event, ${shift.id})">&times;</div>
+            <div class="shift-resize right" onmousedown="window._editor.onResizeStart(event, ${shift.id}, 'right')"></div>
+        </div>`;
+    }
+    return html;
+}
+
+function renderMonthlyPreferencesSection() {
+    const el = document.getElementById('monthlyPrefsSection');
+    if (!el) return;
+    const prefs = (S.monthlyPreferences || []).filter(p =>
+        ['prefer_off','not_before','not_after','other'].includes(p.preference_type));
+    if (!prefs.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    const byEmp = {};
+    for (const p of prefs) { if (!byEmp[p.employee_name]) byEmp[p.employee_name] = []; byEmp[p.employee_name].push(p); }
+    const order = [...S.employees.map(e => e.name).filter(n => byEmp[n]), ...Object.keys(byEmp).filter(n => !S.employees.some(e => e.name === n)).sort((a,b) => a.localeCompare(b,'ru'))];
+    el.style.display = 'block';
+    el.innerHTML = `<div class="monthly-pref-shell">
+        <div class="monthly-pref-header" id="prefHeader" onclick="togglePrefCollapse()">
+            <h4 class="monthly-pref-title">Пожелания на месяц (${prefs.length})</h4>
+            <span class="monthly-pref-chevron" id="prefChevron">&#9654;</span>
+        </div>
+        <div class="monthly-pref-body" id="prefBody">
+            ${order.map(name => {
+                const empNameStr = escHtml(name);
+                const prefsHtml = byEmp[name].map(p => {
+                    const pt = p.preference_type;
+                    let iconHtml = '', label = '', noteHtml = '';
+                    if (pt === 'not_before') {
+                        const time = p.time_value || p.start_time || '';
+                        iconHtml = `<div class="mp-pref-icon not-before">🕐</div>`;
+                        label = `Не ставить до <span class="mp-pref-time">${escHtml(time)}</span>`;
+                        noteHtml = p.note ? `<span class="mp-pref-note">${escHtml(p.note)}</span>` : '';
+                    } else if (pt === 'not_after') {
+                        const time = p.time_value || p.start_time || '';
+                        iconHtml = `<div class="mp-pref-icon not-after">🌅</div>`;
+                        label = `Не ставить после <span class="mp-pref-time">${escHtml(time)}</span>`;
+                        noteHtml = p.note ? `<span class="mp-pref-note">${escHtml(p.note)}</span>` : '';
+                    } else if (pt === 'prefer_off') {
+                        const s = p.time_value || p.start_time || '';
+                        const e = p.end_time || '';
+                        const timeStr = s && e ? `с ${escHtml(s)} до ${escHtml(e)}` : '';
+                        iconHtml = `<div class="mp-pref-icon prefer-off">🚫</div>`;
+                        label = `Не ставить` + (timeStr ? ` ${timeStr}` : '');
+                        noteHtml = p.note ? `<span class="mp-pref-note">${escHtml(p.note)}</span>` : '';
+                    } else {
+                        iconHtml = `<div class="mp-pref-icon other">💬</div>`;
+                        label = p.note ? escHtml(p.note) : 'Другое пожелание';
+                    }
+                    return `<div class="mp-pref-item">${iconHtml}<div class="mp-pref-text"><span class="mp-pref-label">${label}</span>${noteHtml}</div></div>`;
+                }).join('');
+                return `<div class="mp-emp-card"><div class="mp-emp-name">${empNameStr}</div>${prefsHtml}</div>`;
+            }).join('')}
+        </div>
+    </div>`;
+}
+
+window.togglePrefCollapse = function() {
+    const header = document.getElementById('prefHeader');
+    const body = document.getElementById('prefBody');
+    const chevron = document.getElementById('prefChevron');
+    if (!header || !body || !chevron) return;
+    const collapsed = header.classList.toggle('open');
+    chevron.classList.toggle('rotated');
+    body.style.display = collapsed ? 'block' : 'none';
+};
+
+// ===== LABELS & TEXT =====
+function getBlockText(type, note, start, end) {
+    let clean = note && note.trim() ? note.trim() : '';
+
+    // Strip note if it essentially repeats what we'll generate.
+    // The server may put the full label in `note` (e.g. "Не ставить до 10:00")
+    // when the actual note is empty — we need to detect and suppress this.
+    if (type === 'preference_not_before' || type === 'not_before') {
+        clean = sanitizeLabelDup(clean, 'Не ставить до');
+    } else if (type === 'preference_not_after' || type === 'not_after') {
+        clean = sanitizeLabelDup(clean, 'Не ставить после');
+    } else if (type === 'preference_off' || type === 'prefer_off') {
+        clean = sanitizeLabelDup(clean, 'Не ставить');
+    } else if (type === 'vacation') {
+        clean = sanitizeLabelDup(clean, 'Отпуск');
+    }
+
+    if (type === 'study') return `Учёба ${start} - ${end}`;
+    if (type === 'vacation') return clean ? `Отпуск — ${clean}` : 'Отпуск';
+    if (type === 'preference_off' || type === 'prefer_off') {
+        let t = 'Пожелание: не ставить';
+        if (start && end) t += ` с ${start} до ${end}`;
+        if (clean) t += ` — ${clean}`;
+        return t;
+    }
+    if (type === 'preference_not_before' || type === 'not_before') return clean ? `Не ставить до ${end||start} — ${clean}` : `Не ставить до ${end||start}`;
+    if (type === 'preference_not_after' || type === 'not_after') return clean ? `Не ставить после ${start} — ${clean}` : `Не ставить после ${start}`;
+    if (type === 'preference_other' || type === 'other') return clean || 'Другое пожелание';
+    if (type === 'outside_hours') return 'Не рабочее время';
+    return clean ? `Доступен — ${clean}` : 'Доступен';
+}
+
+/**
+ * If note is merely the auto-generated label repeated (e.g. "Не ставить до 10:00"),
+ * return empty string. Keeps any extra info after " — ".
+ */
+function sanitizeLabelDup(note, prefix) {
+    if (!note || !note.includes(prefix)) return note;
+    // Try to split on " — " — if the note IS the auto-label, both sides are the same
+    const parts = note.split(' — ');
+    if (parts.length === 2) {
+        // If both sides are identical or both contain the prefix pattern, drop entirely
+        if (parts[0].trim() === parts[1].trim()) return '';
+        if (parts[1].trim().includes(prefix)) {
+            // Both parts are auto-labels — keep neither
+            return '';
+        }
+        // Keep the non-duplicate part
+        return parts[1].trim();
+    }
+    // No " — " — check if the whole note is just the auto-label
+    // Pattern: "Не ставить до HH:MM" or "Не ставить после HH:MM" or "Не ставить"
+    if (note.match(/Не ставить (до|после) \d{2}:\d{2}$/) || note.trim() === prefix) {
+        return '';
+    }
+    return note;
+}
+
+function getMonthlyPrefText(p) { return getBlockText(p.preference_type, p.note||'', p.start_time||p.time_value||'', p.end_time||p.time_value||''); }
+
+function getLabelClass(type) {
+    if (type === 'vacation') return 'az-vacation';
+    if (type === 'study') return 'az-study';
+    if (['preference_off','prefer_off','preference_not_before','preference_not_after','not_before','not_after'].includes(type)) return 'az-pref-off';
+    if (type === 'preference_other' || type === 'other') return 'az-other';
+    if (type === 'outside_hours') return 'az-outside';
+    return 'az-avail';
+}
+
+function normalizeMonthlyPrefType(t) {
+    if (t === 'prefer_off') return 'preference_off';
+    if (t === 'not_before') return 'preference_not_before';
+    if (t === 'not_after') return 'preference_not_after';
+    if (t === 'other') return 'preference_other';
+    return t || 'preference_off';
+}
+
+// ===== CONFLICT DETECTION =====
+function detectConflicts(shift) {
+    const r = { hard: false, overlap: false, overHours: false };
+    const sS = timeToMin(shift.start_time), sE = timeToMin(shift.end_time);
+    const avail = S.availability[shift.date]?.[shift.employee_name];
+    if (avail) for (const b of avail.blocks) {
+        if (b.type === 'study' || b.type === 'vacation') {
+            if (!(sE <= timeToMin(b.start) || sS >= timeToMin(b.end))) { r.hard = true; break; }
+        }
+    }
+    for (const other of S.shifts) {
+        if (other.employee_name === shift.employee_name && other.date === shift.date && other.id !== shift.id) {
+            if (!(sE <= timeToMin(other.start_time) || sS >= timeToMin(other.end_time))) { r.overlap = true; break; }
+        }
+    }
+    const emp = S.employees.find(e => e.name === shift.employee_name);
+    if (emp) {
+        const limit = S.RATE_LIMITS[emp.rate] || 8;
+        const total = S.shifts.filter(s => s.employee_name === shift.employee_name && s.date === shift.date)
+            .reduce((sum, s) => sum + (timeToMin(s.end_time) - timeToMin(s.start_time)), 0);
+        if (total / 60 > limit) r.overHours = true;
+    }
+    return r;
+}
+
+// ===== NAVIGATION =====
+function setViewMode(mode) { if (S.viewMode === mode) return; S.viewMode = mode; loadDataForCurrentView().then(render); }
+window.setViewMode = setViewMode;
+
+async function navigate(dir) {
+    if (S.viewMode === 'day') S.currentDate = addDays(S.currentDate, dir);
+    else if (S.viewMode === 'week') S.currentDate = addDays(S.currentDate, dir * 7);
+    else { S.currentDate = new Date(S.currentDate.getFullYear(), S.currentDate.getMonth() + dir, 1); }
+    await loadDataForCurrentView(); render();
+}
+window.navigate = navigate;
+
+async function goToToday() { S.currentDate = new Date(); await loadDataForCurrentView(); render(); }
+window.goToToday = goToToday;
+
+// ===== FILTER =====
+function onFilterChange() {
+    S.searchQuery = document.getElementById('empSearch').value;
+    S.typeFilter = document.getElementById('typeFilter').value;
+    S.hideEmpty = document.getElementById('hideEmptyCb')?.checked || false;
+    const weekendsCb = document.getElementById('showWeekendsCb');
+    S.showWeekends = weekendsCb ? weekendsCb.checked : true;
+    render();
+}
+window.onFilterChange = onFilterChange;
+
+// ===== TOGGLE NON-WORKING DAY =====
+async function toggleNonWorking(dateStr, el, event) {
+    event.stopPropagation();
+    event.preventDefault();
+    const isCurrentlyNonWorking = el.classList.contains('active');
+    const newState = !isCurrentlyNonWorking;
+
+    const { start, end } = getDateRange();
+    try {
+        const resp = await fetch(
+            `/api/v1/schedule/editor/set-non-working?start_date=${fmtDate(start)}&end_date=${fmtDate(end)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: dateStr, is_non_working: newState }),
+            });
+        const result = await resp.json();
+        console.log('set-non-working response:', resp.status, result);
+        if (!resp.ok) throw new Error(result.error || 'Request failed');
+        // Полная перезагрузка данных с сервера — целевые часы, доступность, смены пересчитываются из БД
+        S.nonWorkingDates = result.non_working_dates || S.nonWorkingDates;
+        await loadDataForCurrentView();
+        render();
+        toast(newState ? 'День отмечен как нерабочий' : 'День отмечен как рабочий');
+    } catch (err) {
+        console.error('toggleNonWorking error:', err);
+        toast('Ошибка: ' + err.message, true);
+    }
+}
+window.toggleNonWorking = toggleNonWorking;
+
+// ===== TOOLTIP =====
+let _tip = null, _tipT = null;
+function attachShiftTooltips() {
+    document.querySelectorAll('.shift-blk').forEach(el => {
+        el.addEventListener('mouseenter', () => { _tipT = setTimeout(() => showTip(el), 500); });
+        el.addEventListener('mouseleave', () => { clearTimeout(_tipT); hideTip(); });
+    });
+}
+function showTip(el) {
+    hideTip();
+    const shift = S.shifts.find(s => s.id === parseInt(el.dataset.shiftId));
+    if (!shift) return;
+    const c = detectConflicts(shift);
+    let extra = '';
+    if (c.hard) extra = '\n⛔ Конфликт: учёба/отпуск';
+    else if (c.overlap) extra = '\n⚠️ Пересечение с другой сменой';
+    else if (c.overHours) extra = '\n⚠️ Превышение нормы часов';
+    const tip = document.createElement('div');
+    tip.className = 'g-tooltip visible';
+    tip.id = '_shiftTooltip'; tip._tipEl = tip;
+    tip.style.cssText = 'position:fixed;z-index:5000;padding:8px 14px;background:var(--text-primary);color:var(--bg-surface);border-radius:8px;font-size:12px;font-weight:500;pointer-events:none;opacity:0.95;max-width:280px;box-shadow:0 4px 16px rgba(0,0,0,0.2);white-space:pre-line;';
+    tip.textContent = `${shift.employee_name}\n${shift.date}: ${shift.start_time} — ${shift.end_time}${extra}`;
+    document.body.appendChild(tip); _tip = tip;
+    el.addEventListener('mousemove', moveTip);
+}
+function moveTip(e) {
+    if (!_tip) return;
+    let x = e.clientX + 12, y = e.clientY - 12;
+    const r = _tip.getBoundingClientRect();
+    if (x + 280 > window.innerWidth) x = e.clientX - r.width - 12;
+    if (y < 8) y = 8;
+    _tip.style.left = x + 'px'; _tip.style.top = y + 'px';
+}
+function hideTip() { if (_tip) { _tip.remove(); _tip = null; } }
+
+// ================================================================
+// DRAG AND DROP — Fixed Coordinate System
+// ================================================================
+function onRowMouseDown(e, empName) {
+    if (e.target.closest('.shift-blk')) return;
+    if (e.button !== 0) return;
+
+    const dates = S._dates || getVisibleDates();
+    const bodyWrap = document.getElementById('tlBodyWrap');
+    const tlBody = document.getElementById('tlBody');
+    const row = e.currentTarget;
+
+    // Compute x in content-space (accounts for scroll)
+    const tlRect = tlBody.getBoundingClientRect();
+    const contentX = e.clientX - tlRect.left;
+
+    const { dateStr, time } = pixelToTime(contentX, dates);
+    document.body.style.userSelect = 'none';
+
+    const drag = S.drag = {
+        active: true, mode: 'create',
+        empName, dateStr,
+        startSlot: timeToMin(time),
+        endSlot: timeToMin(time) + 30,
+        shiftId: null, dates
+    };
+
+    const onMove = (ev) => {
+        if (!S.drag.active) return;
+        // Re-read scroll position for accurate content-space x
+        const curTlRect = document.getElementById('tlBody').getBoundingClientRect();
+        const curX = ev.clientX - curTlRect.left;
+        const { dateStr: dEnd, time: tEnd } = pixelToTime(curX, dates);
+        if (dEnd === S.drag.dateStr) {
+            S.drag.endSlot = timeToMin(tEnd) + 30;
+        }
+        renderDragOverlay();
+    };
+
+    const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.userSelect = '';
+        if (!S.drag.active) return;
+        S.drag.active = false;
+        hideDragOverlay(empName);
+
+        const startMin = Math.min(S.drag.startSlot, S.drag.endSlot);
+        const endMin = Math.max(S.drag.startSlot, S.drag.endSlot);
+        const endTime = minToTime(Math.min(endMin, 22 * 60));
+        const startTime = minToTime(startMin);
+
+        if (endMin - startMin <= 30) {
+            // Click without drag — open modal with default 2h window
+            const defEnd = minToTime(Math.min(startMin + 120, 22 * 60));
+            openCreateModal(empName, S.drag.dateStr, startTime, defEnd);
+        } else {
+            openCreateModal(empName, S.drag.dateStr, startTime, endTime);
+        }
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+}
+
+function renderDragOverlay() {
+    if (!S.drag.active || S.drag.mode !== 'create') return;
+    const empId = cssId(S.drag.empName);
+    const sel = document.getElementById(`dragSel-${empId}`);
+    const selTime = document.getElementById(`dragSelTime-${empId}`);
+    const prev = document.getElementById(`dragPrev-${empId}`);
+    const prevTime = document.getElementById(`dragPrevTime-${empId}`);
+    const tooltip = document.getElementById(`dragTooltip-${empId}`);
+    const dates = S.drag.dates;
+    const startMin = Math.min(S.drag.startSlot, S.drag.endSlot);
+    const endMin = Math.max(S.drag.startSlot, S.drag.endSlot);
+    const durationMin = Math.abs(endMin - startMin);
+    const left = timeToPixel(minToTime(startMin), S.drag.dateStr, dates);
+    const right = timeToPixel(minToTime(endMin), S.drag.dateStr, dates);
+    const width = Math.abs(right - left);
+    const hasDrag = durationMin > 30;
+    const timeLabel = `${minToTime(startMin)} — ${minToTime(endMin)} (${Math.round(durationMin / 60 * 10) / 10}ч)`;
+
+    if (prev && hasDrag) {
+        prev.style.left = left + 'px'; prev.style.width = width + 'px';
+        prev.style.display = 'block';
+        if (prevTime) { prevTime.textContent = timeLabel; prevTime.style.display = 'block'; }
+    } else if (prev) { prev.style.display = 'none'; }
+
+    if (sel) {
+        sel.style.left = left + 'px'; sel.style.width = Math.max(width, 20) + 'px';
+        sel.style.display = 'block';
+        if (selTime && !hasDrag) { selTime.textContent = minToTime(startMin); selTime.style.display = 'block'; }
+        else if (selTime) { selTime.style.display = 'none'; }
+    }
+
+    if (tooltip && hasDrag) {
+        tooltip.style.left = (left + width / 2) + 'px';
+        tooltip.style.top = '4px'; tooltip.style.display = 'block';
+        tooltip.textContent = timeLabel;
+    } else if (tooltip) { tooltip.style.display = 'none'; }
+}
+
+function hideDragOverlay(empName) {
+    const id = cssId(empName);
+    const ids = [`dragSel-${id}`, `dragSelTime-${id}`, `dragPrev-${id}`, `dragPrevTime-${id}`, `dragTooltip-${id}`];
+    ids.forEach(i => { const el = document.getElementById(i); if (el) el.style.display = 'none'; });
+}
+
+// ===== SHIFT INTERACTIONS =====
+function onShiftMouseDown(e, shiftId) {
+    if (e.target.classList.contains('shift-resize') || e.target.classList.contains('shift-del')) return;
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+
+    const shift = S.shifts.find(s => s.id === shiftId);
+    if (!shift) return;
+
+    const dates = S._dates || getVisibleDates();
+    const blkEl = e.target.closest('.shift-blk');
+    if (!blkEl) return;
+
+    const tlBody = document.getElementById('tlBody');
+    const tlRect = tlBody.getBoundingClientRect();
+    const startX = e.clientX - tlRect.left; // content-space
+    const origLeft = timeToPixel(shift.start_time, shift.date, dates);
+    const duration = timeToMin(shift.end_time) - timeToMin(shift.start_time);
+    let moved = false;
+
+    blkEl.classList.add('dragging');
+
+    const onMove = (ev) => {
+        const curTlRect = document.getElementById('tlBody').getBoundingClientRect();
+        const curX = ev.clientX - curTlRect.left;
+        const dx = curX - startX;
+        if (Math.abs(dx) < 4 && !moved) return;
+        moved = true; S.moveDrag.moved = true;
+
+        const approxLeft = origLeft + dx;
+        const { dateStr } = pixelToTime(approxLeft, dates);
+        const startMin = snapMinutes(timeToMin(shift.start_time) + dx / getSlotWidth() * 30);
+        const boundedStart = Math.max(8*60, Math.min(startMin, 22*60 - duration));
+        const bLeft = timeToPixel(minToTime(boundedStart), dateStr, dates);
+        const bRight = timeToPixel(minToTime(boundedStart + duration), dateStr, dates);
+        blkEl.style.left = bLeft + 'px';
+        blkEl.style.width = (bRight - bLeft) + 'px';
+    };
+
+    const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        blkEl.classList.remove('dragging');
+        const saved = S.moveDrag.suppressClickUntil;
+        S.moveDrag = { active: false, shiftId: null, moved: false, suppressClickUntil: Date.now() + 250 };
+        S.moveDrag.suppressClickUntil = saved;
+
+        if (!moved) return;
+        const curTlRect = document.getElementById('tlBody').getBoundingClientRect();
+        const curX = ev.clientX - curTlRect.left;
+        const dx = curX - startX;
+        const { dateStr } = pixelToTime(origLeft + dx, dates);
+        const startMin = snapMinutes(timeToMin(shift.start_time) + dx / getSlotWidth() * 30);
+        const boundedStart = clampMinutes(startMin, 8*60, 22*60 - duration);
+        commitShiftDrag(shift, dateStr, boundedStart, duration);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp, { once: true });
+}
+
+function onResizeStart(e, shiftId, side) {
+    e.preventDefault(); e.stopPropagation();
+    if (e.button !== 0) return;
+    const shift = S.shifts.find(s => s.id === shiftId);
+    if (!shift) return;
+    const dates = S._dates || getVisibleDates();
+    const handle = e.target.closest('.shift-blk');
+    if (!handle) return;
+
+    const tlBody = document.getElementById('tlBody');
+    const startX = e.clientX - tlBody.getBoundingClientRect().left;
+    const origStart = timeToMin(shift.start_time);
+    const origEnd = timeToMin(shift.end_time);
+    let moved = false;
+
+    const onMove = (ev) => {
+        const curX = ev.clientX - document.getElementById('tlBody').getBoundingClientRect().left;
+        const dx = curX - startX;
+        if (Math.abs(dx) < 3 && !moved) return;
+        moved = true;
+        const sw = getSlotWidth();
+        if (side === 'left') {
+            const newStart = snapMinutes(origStart + dx / sw * 30);
+            if (newStart < origEnd - 30) {
+                const left = timeToPixel(minToTime(newStart), shift.date, dates);
+                handle.style.left = left + 'px';
+                handle.style.width = (timeToPixel(shift.end_time, shift.date, dates) - left) + 'px';
+            }
+        } else {
+            const newEnd = snapMinutes(origEnd + dx / sw * 30);
+            if (newEnd > origStart + 30) {
+                const right = timeToPixel(minToTime(newEnd), shift.date, dates);
+                handle.style.width = (right - timeToPixel(shift.start_time, shift.date, dates)) + 'px';
+            }
+        }
+    };
+
+    const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        if (!moved) return;
+        const curX = ev.clientX - document.getElementById('tlBody').getBoundingClientRect().left;
+        const dx = curX - startX;
+        const sw = getSlotWidth();
+        if (side === 'left') {
+            let ns = snapMinutes(origStart + dx / sw * 30);
+            ns = clampMinutes(ns, 8*60, origEnd - 30);
+            updateShift(shift.id, { start_time: minToTime(ns) });
+        } else {
+            let ne = snapMinutes(origEnd + dx / sw * 30);
+            ne = clampMinutes(ne, origStart + 30, 22*60);
+            updateShift(shift.id, { end_time: minToTime(ne) });
+        }
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp, { once: true });
+}
+
+function commitShiftDrag(shift, nextDate, startMin, duration) {
+    const finalStart = snapMinutes(clampMinutes(startMin, 8*60, 22*60 - duration));
+    updateShift(shift.id, {
+        date: nextDate,
+        start_time: minToTime(finalStart),
+        end_time: minToTime(finalStart + duration),
+    });
+}
+
+function snapMinutes(m) { return Math.round(m / 30) * 30; }
+function clampMinutes(m, min, max) { return Math.min(Math.max(m, min), max); }
+
+function onShiftClick(e, shiftId) {
+    e.stopPropagation();
+    if (S.drag.active || S.moveDrag.active) return;
+    if (Date.now() < (S.moveDrag.suppressClickUntil || 0)) return;
+    const shift = S.shifts.find(s => s.id === shiftId);
+    if (shift) openEditModal(shift);
+}
+
+function onShiftDelClick(e, shiftId) {
+    e.stopPropagation(); e.preventDefault();
+    if (confirm('Удалить эту смену?')) deleteShift(shiftId);
+}
+
+// Expose interaction handlers
+window._editor = window._editor || {};
+window._editor.onRowMouseDown = onRowMouseDown;
+window._editor.onShiftMouseDown = onShiftMouseDown;
+window._editor.onResizeStart = onResizeStart;
+window._editor.onShiftClick = onShiftClick;
+window._editor.onShiftDelClick = onShiftDelClick;
+
+// ===== MODAL =====
+window.openCreateModal = function(empName, dateStr, startTime, endTime) {
+    document.getElementById('modTitle').textContent = 'Назначить смену';
+    document.getElementById('fShiftId').value = '';
+    document.getElementById('fEmpName').value = empName;
+    document.getElementById('fDate').value = dateStr;
+    document.getElementById('fDateDisplay').value = formatDateRu(dateStr);
+    document.getElementById('fStart').value = startTime;
+    document.getElementById('fEnd').value = endTime;
+    document.getElementById('modDeleteBtn').style.display = 'none';
+    hideConflictBox();
+    S.selectedShift = null;
+    ModalMgr.open('shiftModal');
+    checkModalConflicts();
+};
+
+window.openEditModal = function(shift) {
+    document.getElementById('modTitle').textContent = 'Редактировать смену';
+    document.getElementById('fShiftId').value = shift.id;
+    document.getElementById('fEmpName').value = shift.employee_name;
+    document.getElementById('fDate').value = shift.date;
+    document.getElementById('fDateDisplay').value = formatDateRu(shift.date);
+    document.getElementById('fStart').value = shift.start_time;
+    document.getElementById('fEnd').value = shift.end_time;
+    document.getElementById('modDeleteBtn').style.display = '';
+    hideConflictBox();
+    S.selectedShift = shift;
+    ModalMgr.open('shiftModal');
+    checkModalConflicts();
+};
+
+window.closeModal = function() {
+    ModalMgr.close('shiftModal');
+    S.selectedShift = null;
+};
+
+function checkModalConflicts() {
+    const empName = document.getElementById('fEmpName').value;
+    const dateStr = document.getElementById('fDate').value;
+    const start = document.getElementById('fStart').value;
+    const end = document.getElementById('fEnd').value;
+    const shiftId = document.getElementById('fShiftId').value;
+    if (!start || !end || start >= end) { hideConflictBox(); return; }
+
+    const fake = { id: shiftId ? parseInt(shiftId) : -1, employee_name: empName, date: dateStr, start_time: start, end_time: end };
+    const c = detectConflicts(fake);
+    const box = document.getElementById('conflictBox');
+    if (c.hard) { box.className = 'conflict-box hard'; box.style.display = 'block'; box.textContent = 'Конфликт: пересечение с учёбой или отпуском'; }
+    else if (c.overlap) { box.className = 'conflict-box soft'; box.style.display = 'block'; box.textContent = 'Наложение с другой сменой'; }
+    else if (c.overHours) { box.className = 'conflict-box soft'; box.style.display = 'block'; box.textContent = 'Превышение нормы часов на день'; }
+    else { hideConflictBox(); }
+}
+function hideConflictBox() { const b = document.getElementById('conflictBox'); if (b) { b.style.display = 'none'; b.textContent = ''; } }
+
+/**
+ * When a time input is fully filled (HH:MM), auto-advance:
+ * - fStart → focuses fEnd
+ * - fEnd → nothing (just blur)
+ * Also, while the user is still building the value, if they just typed the
+ * hours digit(s), the native time picker will jump to minutes on its own.
+ */
+window.onTimeInput = function(el) {
+    const v = el.value;
+    if (!v || v.length < 3) return;
+    // When the field becomes a complete HH:MM value, move focus forward
+    if (v.length === 5) {
+        if (el.id === 'fStart') {
+            document.getElementById('fEnd').focus();
+        } else if (el.id === 'fEnd') {
+            el.blur();
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    ['fStart', 'fEnd'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', checkModalConflicts);
+    });
+});
+
+function formatDateRu(ds) {
+    return parseDate(ds).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ===== CRUD =====
+window.onSaveShift = async function(e) {
+    e.preventDefault();
+    const shiftId = document.getElementById('fShiftId').value;
+    const data = {
+        employee_name: document.getElementById('fEmpName').value,
+        date: document.getElementById('fDate').value,
+        start_time: document.getElementById('fStart').value,
+        end_time: document.getElementById('fEnd').value,
+        shift_type: 'operator',
+        note: '',
+    };
+    if (!data.start_time || !data.end_time || data.start_time >= data.end_time) {
+        toast('Время начала должно быть раньше окончания', true); return;
+    }
+    closeModal();
+    if (shiftId) await updateShift(parseInt(shiftId), data);
+    else await createShift(data);
+};
+
+async function createShift(data) {
+    if (shiftActionPending) return;
+    shiftActionPending = true;
+    const tempId = -Date.now();
+    const tempShift = { ...data, id: tempId };
+    try {
+        S.shifts.push(tempShift); render(); setSyncStatus('saving');
+        const resp = await fetch('/api/v1/schedule/editor/shifts', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+        if (resp.ok && result.shift) {
+            const idx = S.shifts.findIndex(s => s.id === tempId);
+            if (idx >= 0) S.shifts[idx] = result.shift;
+            setSyncStatus('saved'); toast('Смена создана');
+        } else throw new Error(result.error || 'Create failed');
+    } catch (err) {
+        S.shifts = S.shifts.filter(s => s.id !== tempId);
+        setSyncStatus('error'); toast('Ошибка создания: ' + err.message, true);
+    } finally { shiftActionPending = false; }
+    render();
+}
+
+async function updateShift(shiftId, fields) {
+    if (shiftActionPending) return;
+    shiftActionPending = true;
+    const idx = S.shifts.findIndex(s => s.id === shiftId);
+    if (idx < 0) { shiftActionPending = false; return; }
+    const orig = { ...S.shifts[idx] };
+    try {
+        Object.assign(S.shifts[idx], fields); render(); setSyncStatus('saving');
+        const resp = await fetch('/api/v1/schedule/editor/shifts', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shift_id: shiftId, ...fields })
+        });
+        const result = await resp.json();
+        if (resp.ok && result.shift) {
+            S.shifts[idx] = result.shift;
+            setSyncStatus('saved'); toast('Смена обновлена');
+        } else throw new Error(result.error || 'Update failed');
+    } catch (err) {
+        S.shifts[idx] = orig;
+        setSyncStatus('error'); toast('Ошибка обновления: ' + err.message, true);
+    } finally { shiftActionPending = false; }
+    render();
+}
+
+async function deleteShift(shiftId) {
+    if (shiftActionPending) return;
+    shiftActionPending = true;
+    const idx = S.shifts.findIndex(s => s.id === shiftId);
+    if (idx < 0) { shiftActionPending = false; return; }
+    const orig = S.shifts[idx];
+    try {
+        S.shifts.splice(idx, 1); render(); setSyncStatus('saving');
+        const resp = await fetch('/api/v1/schedule/editor/shifts', {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shift_id: shiftId })
+        });
+        const result = await resp.json();
+        if (resp.ok) { setSyncStatus('saved'); toast('Смена удалена'); }
+        else throw new Error(result.error || 'Delete failed');
+    } catch (err) {
+        S.shifts.splice(idx, 0, orig);
+        setSyncStatus('error'); toast('Ошибка удаления: ' + err.message, true);
+    } finally { shiftActionPending = false; }
+    render();
+}
+
+window.onDeleteShift = function() {
+    const shiftId = document.getElementById('fShiftId').value;
+    if (!shiftId) return;
+    if (!confirm('Удалить эту смену?')) return;
+    closeModal(); deleteShift(parseInt(shiftId));
+};
+
+// ===== UI UTILITIES =====
+function setSyncStatus(status) {
+    S.syncStatus = status;
+    const ind = document.getElementById('syncInd');
+    const icon = document.getElementById('syncIcon');
+    const text = document.getElementById('syncText');
+    if (!ind) return;
+    ind.className = 'sync-ind ' + status;
+    if (status === 'saving') { icon.textContent = '⏳'; text.textContent = 'Сохранение...'; }
+    else if (status === 'saved') { icon.textContent = '✓'; text.textContent = 'Сохранено'; }
+    else { icon.textContent = '✗'; text.textContent = 'Ошибка'; }
+}
+
+function toast(msg, isError) {
+    const el = document.getElementById('gToast');
+    const msgEl = document.getElementById('toastMsg');
+    if (!el || !msgEl) return;
+    msgEl.textContent = (isError ? '❌ ' : '✅ ') + msg;
+    el.className = 'g-toast' + (isError ? ' error' : '') + ' show';
+    clearTimeout(el._tid);
+    el._tid = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ===== RENDER DATE TRACKING FOR DRAG =====
+const _origRender = render;
+function renderWrap() {
+    S._dates = getVisibleDates();
+    _origRender();
+}
+
+function cssId(name) { return name.replace(/[^a-zA-Z0-9\u0400-\u04FF]/g, '_'); }
+function escHtml(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+function escAttr(s) { return escHtml(s).replace(/'/g, '&#x27;'); }
+
+})();
+</script>
+{% endblock %}

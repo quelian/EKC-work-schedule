@@ -1,0 +1,6 @@
+employee_id,name,max_hours,norm_hours,max_consecutive_days,rate
+ivanova,Анна Иванова,168,152,5,1.0
+petrov,Игорь Петров,168,160,5,1.0
+smirnova,Мария Смирнова,152,144,4,1.0
+sokolov,Павел Соколов,176,160,5,1.0
+lebedeva,Ольга Лебедева,160,152,4,1.0

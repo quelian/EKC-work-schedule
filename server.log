@@ -1,0 +1,68 @@
+INFO:     Will watch for changes in these directories: ['/Users/egor/график работы екц']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [64231] using WatchFiles
+INFO:     Started server process [64234]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:60619 - "GET /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60602 - "GET / HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:60602 - "GET /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60654 - "POST /login HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:60654 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60654 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60688 - "POST /employees/adjust-hours HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:60688 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60688 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61137 - "POST /employees/adjust-hours HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:61137 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61137 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "POST /employees/adjust-hours HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:61138 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61237 - "POST /employees/adjust-hours HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:61237 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61237 - "GET /employees HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61296 - "GET /calendar HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61412 - "GET /schedule HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61412 - "GET /schedule/editor HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61930 - "GET /schedule/editor?view=month HTTP/1.1" 200 OK
+INFO:     192.168.0.32:50857 - "GET / HTTP/1.1" 303 See Other
+INFO:     192.168.0.32:50856 - "GET /login HTTP/1.1" 200 OK
+INFO:     192.168.0.32:50858 - "POST /login HTTP/1.1" 303 See Other
+INFO:     192.168.0.32:50858 - "GET / HTTP/1.1" 303 See Other
+INFO:     192.168.0.32:50858 - "GET /my-schedule HTTP/1.1" 200 OK
+INFO:     192.168.0.32:50860 - "GET /schedule HTTP/1.1" 200 OK
+INFO:     192.168.0.32:50859 - "GET /my-schedule HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/main_new.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [64234]
+INFO:     Started server process [64448]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/main_new.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [64448]
+INFO:     Started server process [64451]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/main_new.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [64451]
+INFO:     Started server process [64452]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/main_new.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [64452]
+INFO:     Started server process [64488]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:64900 - "GET /schedule/editor?view=month HTTP/1.1" 200 OK
