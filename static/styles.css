@@ -2758,12 +2758,14 @@ html {
     /* Content no sidebar offset */
     .content-wrapper {
         margin-left: 0;
-        padding: 20px 16px 36px;
+        padding: 20px 14px calc(36px + env(safe-area-inset-bottom, 0px));
         padding-top: 72px; /* Leave room for hamburger */
     }
 
     .page-shell {
-        width: calc(100% - 20px);
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .page {
@@ -2771,23 +2773,67 @@ html {
         gap: 14px;
     }
 
+    /* —— Cards: tighter on mobile —— */
     .card {
-        padding: 18px 20px;
+        padding: 16px 14px;
         border-radius: var(--radius-md);
     }
 
+    .card__title {
+        font-size: 16px;
+    }
+
+    .card__subtitle {
+        font-size: 14px;
+    }
+
+    .card__body {
+        gap: 8px;
+        padding-top: 8px;
+    }
+
+    /* —— Stat cards: 1-column on mobile —— */
     .stat-grid {
         grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 18px;
+    }
+
+    .stat-card {
+        padding: 16px 14px;
+        border-radius: var(--radius-md);
+    }
+
+    .stat-card__label {
+        font-size: 13px;
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .stat-card__value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    .stat-card__icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+        border-radius: 10px;
     }
 
     .stat-card__content {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
     }
 
+    /* —— Content header —— */
     .content-header {
         flex-direction: column;
-        margin-bottom: 24px;
+        margin-bottom: 18px;
         gap: 12px;
     }
 
@@ -2796,9 +2842,33 @@ html {
         text-align: center;
     }
 
-    /* Responsive table — card mode */
+    .content-header__title {
+        font-size: clamp(20px, 5vw, 24px);
+    }
+
+    .content-header__subtitle {
+        font-size: 14px;
+    }
+
+    /* —— Section headers —— */
+    .section-head {
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+
+    .section-head__title {
+        font-size: 16px;
+    }
+
+    .section-head__desc {
+        font-size: 13px;
+    }
+
+    /* —— Responsive table — card mode —— */
     .table-wrapper {
         border-radius: var(--radius-sm);
+        margin: 0 -4px;
     }
 
     .data-table thead {
@@ -2813,7 +2883,7 @@ html {
     }
 
     .data-table tbody tr {
-        padding: 12px 0;
+        padding: 14px 0;
         border-bottom: 1px solid var(--border-light);
     }
 
@@ -2822,29 +2892,44 @@ html {
     }
 
     .data-table td {
-        padding: 6px 16px;
+        padding: 6px 14px;
         text-align: right;
+        font-size: 15px;
     }
 
     .data-table td::before {
         content: attr(data-label);
         float: left;
-        font-weight: 600;
+        font-weight: 700;
         font-size: 12px;
-        color: var(--text-secondary);
+        color: var(--apple-blue);
         text-transform: uppercase;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.04em;
+        margin-right: 8px;
+    }
+
+    .data-table td {
+        padding: 8px 14px;
     }
 
     .data-table td:first-child {
         text-align: left;
+        font-weight: 600;
+        padding-top: 0;
+        font-size: 15px;
     }
 
     .data-table td:first-child::before {
         display: none;
     }
 
-    /* Calendar grid — mobile list view */
+    /* Badges inside table cells */
+    .data-table .badge {
+        font-size: 13px;
+        padding: 4px 10px;
+    }
+
+    /* —— Calendar grid — mobile list view —— */
     .calendar-grid {
         min-width: unset;
         padding: 16px;
@@ -2973,7 +3058,7 @@ html {
         color: var(--apple-red);
     }
 
-    /* Modal goes full screen — bottom sheet on mobile */
+    /* —— Modal — bottom sheet on mobile —— */
     .modal-backdrop {
         padding: 0;
         align-items: flex-end;
@@ -2981,28 +3066,227 @@ html {
 
     .modal-dialog {
         width: 100%;
-        max-height: 90vh;
+        max-height: 92vh;
         border-radius: var(--radius-xl) var(--radius-xl) 0 0;
         bottom: 0;
         transform: translateY(100%);
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     }
 
     .modal-backdrop.open .modal-dialog {
         transform: translateY(0);
     }
 
-    /* Form grid becomes single column */
+    /* Drag handle indicator on bottom sheet */
+    .modal-dialog::before {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 5px;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--text-primary) 18%, transparent);
+        margin: 0 auto 14px;
+        flex-shrink: 0;
+    }
+
+    .modal-dialog .modal-header {
+        padding: 0 24px 14px;
+    }
+
+    .modal-dialog .modal-title {
+        font-size: 17px;
+    }
+
+    .modal-dialog form {
+        padding: 16px 24px;
+        gap: 14px;
+    }
+
+    .modal-dialog .modal-footer {
+        margin-top: 16px;
+        padding-top: 14px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* —— Form grid becomes single column —— */
     .form-grid {
         grid-template-columns: 1fr;
     }
 
-    /* Touch-friendly: minimum tap targets */
+    /* —— Form inputs: touch-friendly —— */
+    .input {
+        min-height: 48px;
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 12px 16px;
+    }
+
+    select.input {
+        padding-right: 36px;
+    }
+
+    textarea.input {
+        min-height: 100px;
+    }
+
+    .form-label {
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    /* —— Buttons: touch-friendly —— */
     .btn {
+        min-height: 48px;
+        font-size: 16px;
+        padding: 12px 20px;
+    }
+
+    .btn:active {
+        transform: scale(0.97);
+        transition-duration: 50ms;
+    }
+
+    .btn--primary:active {
+        transform: scale(0.97) translateY(0);
+    }
+
+    .btn--ghost {
         min-height: 44px;
     }
 
+    /* —— Alerts: mobile spacing —— */
+    .alert {
+        padding: 14px 16px;
+        font-size: 14px;
+        gap: 10px;
+    }
+
+    .alert-group {
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .alert-icon {
+        font-size: 1rem;
+    }
+
+    /* —— Legend chips: horizontal scroll on mobile —— */
+    .legend {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 4px;
+        margin-left: -14px;
+        padding-left: 14px;
+        margin-right: -14px;
+        padding-right: 14px;
+    }
+
+    .legend::-webkit-scrollbar {
+        display: none;
+    }
+
+    .legend__chip {
+        scroll-snap-align: start;
+        flex-shrink: 0;
+        font-size: 13px;
+        padding: 6px 12px;
+    }
+
+    /* —— Empty state —— */
+    .empty-state {
+        padding: 40px 20px;
+    }
+
+    .empty-state__title {
+        font-size: 16px;
+    }
+
+    .empty-state__desc {
+        font-size: 13px;
+    }
+
+    /* —— Grid utilities —— */
+    .grid-2,
+    .grid-3,
+    .grid-responsive-2,
+    .grid-responsive-3 {
+        gap: 14px;
+    }
+
+    /* —— Badges —— */
+    .badge {
+        font-size: 13px;
+        padding: 4px 10px;
+    }
+
+    /* —— Toggle switch —— */
+    .toggle {
+        gap: 8px;
+    }
+
+    .toggle__label {
+        font-size: 14px;
+    }
+
+    /* —— Sidebar nav items —— */
     .sidebar__nav-item {
+        min-height: 48px;
+        padding: 14px 16px;
+        font-size: 16px;
+    }
+
+    .sidebar__action {
         min-height: 44px;
+    }
+
+    /* —— Scroll hint for horizontal areas —— */
+    .scrollable-hint {
+        position: relative;
+    }
+
+    .scrollable-hint::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 24px;
+        background: linear-gradient(to left, var(--bg-page), transparent);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* —— Quick action grid (home dashboard cards) —— */
+    .grid-responsive-2 .card {
+        padding: 16px;
+    }
+
+    .grid-responsive-2 .card__title {
+        font-size: 15px;
+    }
+
+    .grid-responsive-2 .card__subtitle {
+        font-size: 13px;
+    }
+
+    .grid-responsive-2 .card__body {
+        padding-top: 4px;
+    }
+
+    /* —— Save indicator —— */
+    .saving-indicator {
+        font-size: 13px;
+    }
+
+    /* —— Skeleton loading —— */
+    .skeleton {
+        border-radius: 6px;
     }
 }
 
