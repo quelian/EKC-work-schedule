@@ -1059,32 +1059,32 @@
 
     /* Empty filler days */
     .calendar-container .calendar-day.is-empty {
-        background: rgba(248, 249, 250, 0.4) !important;
+        background: var(--gray-100) !important;
         border-style: dashed !important;
-        opacity: 0.6 !important;
         pointer-events: none;
     }
 
     /* Shift days */
     .calendar-container .calendar-day.is-shift {
-        background: var(--glass-gradient) !important;
-        border-color: var(--glass-border) !important;
+        background: var(--blue-50) !important;
+        border-color: var(--blue-500) !important;
     }
 
     /* No-shift days */
     .calendar-container .calendar-day.no-shift {
-        background: var(--glass-gradient) !important;
-        border-color: var(--glass-border) !important;
+        background: var(--green-50) !important;
+        border-color: var(--green-500) !important;
     }
 
     /* Weekend */
     .calendar-container .calendar-day.is-weekend {
-        background: color-mix(in srgb, var(--apple-orange) 4%, var(--glass-gradient)) !important;
-        border-color: color-mix(in srgb, var(--apple-orange) 12%, var(--glass-border)) !important;
+        background: var(--orange-50) !important;
+        border-color: var(--orange-100) !important;
     }
 
     .calendar-container .calendar-day.is-weekend .day-num {
-        background: var(--apple-red);
+        color: var(--orange-700);
+        background: transparent;
     }
 
     /* Weekend/holiday day number stays red */
@@ -1117,8 +1117,8 @@
     }
 
     .calendar-day.is-weekend .day-num {
-        background: var(--apple-orange) !important;
-        color: white !important;
+        color: var(--orange-700) !important;
+        background: transparent !important;
     }
 
     /* Inject weekday label before day number */
@@ -1158,22 +1158,28 @@
     }
 
     .calendar-container .calendar-day .day-chip--shift {
-        background: var(--apple-blue);
+        background: var(--red-500);
+        color: white;
     }
     .calendar-container .calendar-day .day-chip--study {
-        background: var(--apple-purple);
+        background: var(--blue-500);
+        color: white;
     }
     .calendar-container .calendar-day .day-chip--pref-off {
-        background: var(--apple-orange);
+        background: var(--orange-500);
+        color: white;
     }
     .calendar-container .calendar-day .day-chip--pref-work {
-        background: var(--apple-green);
+        background: var(--green-500);
+        color: white;
     }
     .calendar-container .calendar-day .day-chip--vacation {
-        background: var(--apple-green);
+        background: var(--green-600);
+        color: white;
     }
     .calendar-container .calendar-day .day-chip--other {
-        background: var(--apple-purple);
+        background: var(--purple-500);
+        color: white;
     }
 
     /* Empty day indicator */
@@ -1217,6 +1223,120 @@
     /* Stats label smaller */
     .my-stats__label {
         font-size: 0.7rem;
+    }
+
+    /* Header action buttons: stack vertically on small screens */
+    .flex.flex-wrap.gap-2 {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    .flex.flex-wrap.gap-2 .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Calendar container: flush edges, smaller padding */
+    .calendar-container {
+        border-radius: var(--radius-md) !important;
+        padding: 12px 0 !important;
+    }
+
+    .cal-weekdays {
+        display: none !important;
+    }
+
+    .my-calendar-grid {
+        padding: 8px 4px !important;
+    }
+
+    /* Monthly preference cards: stack actions below text */
+    .monthly-pref-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        padding: 12px !important;
+    }
+    .monthly-pref-card__actions {
+        align-self: flex-end !important;
+    }
+
+    /* Content header: subtitle wrap, title sizing */
+    .content-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding-right: 8px;
+    }
+    .content-header__title {
+        font-size: 1.35rem !important;
+    }
+    .content-header__subtitle {
+        font-size: 0.85rem !important;
+    }
+}
+
+/* Very small screens (e.g. iPhone SE/Mini) */
+@media (max-width: 420px) {
+    /* Stats: single column on very small screens */
+    .my-stats {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Even tighter calendar cards */
+    .calendar-container .calendar-day {
+        padding: 10px 14px !important;
+        gap: 10px !important;
+    }
+
+    /* Chips smaller text */
+    .calendar-container .calendar-day .day-chip {
+        font-size: 11px !important;
+        padding: 5px 10px !important;
+    }
+
+    /* Stats values smaller */
+    .my-stats__value {
+        font-size: 1.15rem !important;
+    }
+
+    .my-stats__label {
+        font-size: 0.65rem !important;
+    }
+
+    /* Modals go full-screen on small phones */
+    .modal-backdrop .modal-dialog.modal-scrollable,
+    .modal-backdrop .modal-dialog {
+        width: 100vw !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+    .modal-backdrop .modal-dialog.modal-scrollable .modal-header {
+        padding: 16px 20px 12px;
+    }
+    .modal-backdrop .modal-dialog.modal-scrollable #dayConstraintsList,
+    .modal-backdrop .modal-dialog.modal-scrollable form {
+        padding: 16px 20px;
+    }
+    .modal-backdrop .modal-dialog.modal-scrollable .modal-footer {
+        padding: 12px 20px 16px;
+    }
+
+    /* Day modal: smaller chips inside */
+    .constraint-item {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    /* Form inputs: bigger tap targets */
+    .form-group .input {
+        min-height: 44px;
+    }
+
+    /* Radio cards: smaller on tiny screens */
+    .radio-card {
+        padding: 10px 12px;
+        min-height: 56px;
     }
 }
 
