@@ -42,7 +42,7 @@ def start_backup_scheduler() -> AsyncIOScheduler:
 
     scheduler.add_job(
         job,
-        CronTrigger(hour=22, minute=0),
+        CronTrigger(hour=22, minute=0, timezone='Asia/Vladivostok'),
         id="daily_db_backup",
         name="Daily database backup to Telegram",
         replace_existing=True,
@@ -52,7 +52,7 @@ def start_backup_scheduler() -> AsyncIOScheduler:
     global _scheduler
     _scheduler = scheduler
     scheduler.start()
-    logger.info("Backup scheduler started — daily at 22:00")
+    logger.info("Backup scheduler started — daily at 22:00 Asia/Vladivostok (UTC+10)")
 
     return scheduler
 
