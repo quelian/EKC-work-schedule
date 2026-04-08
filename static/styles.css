@@ -2844,18 +2844,133 @@ html {
         display: none;
     }
 
+    /* Calendar grid — mobile list view */
     .calendar-grid {
         min-width: unset;
-        padding: 12px;
-        gap: 6px;
+        padding: 16px;
+        gap: 10px;
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    /* Hide weekday headers on mobile */
+    .calendar-weekday {
+        display: none;
     }
 
     .calendar-day {
-        min-height: 80px;
+        min-height: unset;
+        flex-direction: row;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 18px;
+        border-radius: var(--radius-md);
+        background: var(--glass-gradient);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 0.5px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
     }
 
+    .calendar-day:hover {
+        background: var(--glass-hover);
+        border-color: var(--glass-hover-border);
+        box-shadow: var(--glass-shadow), var(--glass-glow);
+        transform: translateY(-1px);
+    }
+
+    .calendar-day--today {
+        border-color: var(--apple-blue);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--apple-blue) 15%, transparent), var(--glass-shadow);
+        background: linear-gradient(165deg, rgba(0, 122, 255, 0.06) 0%, rgba(255, 255, 255, 0.65) 100%);
+    }
+
+    .calendar-day--weekend {
+        background: color-mix(in srgb, var(--apple-orange) 4%, var(--glass-gradient));
+    }
+
+    .calendar-day--holiday {
+        background: color-mix(in srgb, var(--apple-red) 4%, var(--glass-gradient));
+        border-color: color-mix(in srgb, var(--apple-red) 15%, var(--glass-border));
+    }
+
+    .calendar-day--vacation {
+        background: color-mix(in srgb, var(--apple-green) 4%, var(--glass-gradient));
+        border-color: color-mix(in srgb, var(--apple-green) 15%, var(--glass-border));
+    }
+
+    .calendar-day--empty {
+        background: rgba(248, 249, 250, 0.4);
+        border-style: dashed;
+        opacity: 0.6;
+    }
+
+    /* Day number as left column */
+    .calendar-day__number {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+        flex-shrink: 0;
+        width: 36px;
+        text-align: center;
+    }
+
+    /* Inject weekday abbreviation before the day number via CSS */
+    .calendar-day--mobile-weekday::before {
+        content: attr(data-weekday);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-tertiary);
+        text-transform: lowercase;
+        flex-shrink: 0;
+    }
+
+    /* Show items as shift pills */
     .calendar-day__items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        flex: 1;
+        overflow-y: visible;
+    }
+
+    .calendar-day__item {
+        font-size: 13px;
+        padding: 6px 12px;
+        border-radius: var(--radius-full);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 500;
+        background: rgba(0, 122, 255, 0.08);
+        color: var(--apple-blue);
+        border: 0.5px solid rgba(0, 122, 255, 0.12);
+    }
+
+    /* Empty day placeholder */
+    .calendar-day--empty .calendar-day__number::after {
+        content: '(пусто)';
+        font-size: 0.75rem;
+        font-weight: 400;
+        color: var(--text-tertiary);
+        display: block;
+        margin-top: 2px;
+    }
+
+    .calendar-day--empty .calendar-day__items {
         display: none;
+    }
+
+    /* Weekend/holiday day number stays red */
+    .calendar-day--weekend .calendar-day__number,
+    .calendar-day--holiday .calendar-day__number {
+        color: var(--apple-red);
     }
 
     /* Modal goes full screen — bottom sheet on mobile */

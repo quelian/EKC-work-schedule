@@ -1020,6 +1020,206 @@
     #bulkImportModal .import-video-wrapper { min-height: 200px; }
 }
 
+/* ===== MOBILE CALENDAR — List view for my_schedule ===== */
+@media (max-width: 768px) {
+    /* Hide weekday header row */
+    .cal-weekdays {
+        display: none !important;
+    }
+
+    /* Calendar grid becomes vertical list */
+    .my-calendar-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 16px 4px !important;
+    }
+
+    /* Each day becomes a horizontal card */
+    .calendar-container .calendar-day {
+        min-height: unset !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 14px !important;
+        padding: 14px 18px !important;
+        border-radius: var(--radius-md) !important;
+        background: var(--glass-gradient);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 0.5px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+    }
+
+    .calendar-container .calendar-day:hover {
+        background: var(--glass-hover);
+        border-color: var(--glass-hover-border);
+        box-shadow: var(--glass-shadow), var(--glass-glow);
+        transform: translateY(-1px);
+    }
+
+    /* Empty filler days */
+    .calendar-container .calendar-day.is-empty {
+        background: rgba(248, 249, 250, 0.4) !important;
+        border-style: dashed !important;
+        opacity: 0.6 !important;
+        pointer-events: none;
+    }
+
+    /* Shift days */
+    .calendar-container .calendar-day.is-shift {
+        background: var(--glass-gradient) !important;
+        border-color: var(--glass-border) !important;
+    }
+
+    /* No-shift days */
+    .calendar-container .calendar-day.no-shift {
+        background: var(--glass-gradient) !important;
+        border-color: var(--glass-border) !important;
+    }
+
+    /* Weekend */
+    .calendar-container .calendar-day.is-weekend {
+        background: color-mix(in srgb, var(--apple-orange) 4%, var(--glass-gradient)) !important;
+        border-color: color-mix(in srgb, var(--apple-orange) 12%, var(--glass-border)) !important;
+    }
+
+    .calendar-container .calendar-day.is-weekend .day-num {
+        background: var(--apple-red);
+    }
+
+    /* Weekend/holiday day number stays red */
+    .calendar-container .calendar-day.is-weekend .day-num,
+    .calendar-container .calendar-day.is-shift .day-num {
+        color: inherit;
+    }
+
+    /* Day number as left badge */
+    .day-num {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 36px !important;
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
+        background: var(--bg-surface-secondary) !important;
+        color: var(--text-primary) !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+    }
+
+    .calendar-day.is-shift .day-num {
+        background: var(--apple-blue) !important;
+        color: white !important;
+    }
+
+    .calendar-day.is-weekend .day-num {
+        background: var(--apple-orange) !important;
+        color: white !important;
+    }
+
+    /* Inject weekday label before day number */
+    .calendar-container .calendar-day[data-mobile-weekday]::before {
+        content: attr(data-mobile-weekday);
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-tertiary);
+        text-transform: lowercase;
+        flex-shrink: 0;
+        min-width: 22px;
+    }
+
+    /* Show chips as horizontal scroll pills */
+    .calendar-container .calendar-day .calendar-day__items {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        flex: 1 !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .calendar-container .calendar-day .calendar-day__items::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Chips as rounded pills */
+    .calendar-container .calendar-day .day-chip {
+        font-size: 12px !important;
+        padding: 6px 12px !important;
+        border-radius: var(--radius-full) !important;
+        white-space: nowrap !important;
+        font-weight: 500 !important;
+        flex-shrink: 0;
+    }
+
+    .calendar-container .calendar-day .day-chip--shift {
+        background: var(--apple-blue);
+    }
+    .calendar-container .calendar-day .day-chip--study {
+        background: var(--apple-purple);
+    }
+    .calendar-container .calendar-day .day-chip--pref-off {
+        background: var(--apple-orange);
+    }
+    .calendar-container .calendar-day .day-chip--pref-work {
+        background: var(--apple-green);
+    }
+    .calendar-container .calendar-day .day-chip--vacation {
+        background: var(--apple-green);
+    }
+    .calendar-container .calendar-day .day-chip--other {
+        background: var(--apple-purple);
+    }
+
+    /* Empty day indicator */
+    .calendar-container .calendar-day.is-empty .day-num::after {
+        content: '---';
+        font-size: 0.6rem;
+        font-weight: 400;
+        color: var(--text-tertiary);
+        display: block;
+        margin-top: 1px;
+    }
+
+    /* Month legend chips */
+    .my-legend {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .my-legend::-webkit-scrollbar { display: none; }
+
+    .my-legend__chip {
+        flex-shrink: 0;
+    }
+
+    /* Stats cards on mobile */
+    .my-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .my-stats__card {
+        padding: 12px 14px;
+    }
+
+    .my-stats__value {
+        font-size: 1.3rem;
+    }
+
+    /* Stats label smaller */
+    .my-stats__label {
+        font-size: 0.7rem;
+    }
+}
+
 </style>
 {% endblock %}
 
@@ -1141,12 +1341,14 @@
         <div class="calendar-day is-empty"></div>
         {% endfor %}
 
+        {% set weekday_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] %}
         {% for day_data in calendar_days %}
         {% set has_shift = day_data.shifts|length > 0 %}
         <div class="calendar-day
             {% if has_shift %}is-shift{% else %}no-shift{% endif %}
             {% if day_data.is_weekend %} is-weekend{% endif %}
             "
+            data-mobile-weekday="{{ weekday_names[day_data.weekday] }}"
             onclick="openDayModal('{{ day_data.date }}', {{ day_data.day }}, '{{ day_data.date }}')">
 
             <div class="day-num">{{ day_data.day }}</div>
