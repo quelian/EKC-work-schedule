@@ -1,5 +1,6 @@
 """Новый главный файл с обновлённым дизайном."""
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -87,7 +88,24 @@ login_rate_limiter = LoginRateLimiter()
 
 
 BASE_DIR = Path(__file__).parent.parent
-app = FastAPI(title="ЕКЦ График")
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Жизненный цикл приложения: инициализация БД, авторизации, планировщика."""
+    init_db()
+    init_auth()
+
+    from .services.backup_scheduler import start_backup_scheduler
+    start_backup_scheduler()
+
+    yield
+
+    from .services.backup_scheduler import shutdown_scheduler
+    shutdown_scheduler()
+
+
+app = FastAPI(title="ЕКЦ График", lifespan=lifespan)
 _session_secret = os.environ.get("EKC_SESSION_SECRET") or secrets.token_hex(32)
 app.add_middleware(SessionMiddleware, secret_key=_session_secret)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -121,9 +139,6 @@ async def add_security_headers(request: Request, call_next):
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 templates.env.autoescape = True  # Enable XSS protection for all templates
-
-init_db()
-init_auth()
 
 
 def merge_adjacent_shifts(shifts: list[dict]) -> list[dict]:
@@ -734,7 +749,12 @@ async def settings_page(
     from .database import get_app_settings
 
     # Загружаем настройки из БД
-    settings = get_app_settings(['autosave_enabled'])
+    settings = get_app_settings([
+        'autosave_enabled',
+        'telegram_bot_token',
+        'telegram_chat_id',
+        'telegram_backup_enabled',
+    ])
 
     context = {
         "request": request,
@@ -743,6 +763,9 @@ async def settings_page(
         "month_label": f"{'Январь Февраль Март Апрель Май Июнь Июль Август Сентябрь Октябрь Ноябрь Декабрь'.split()[month-1]} {year}",
         "active_page": "settings",
         "autosave_enabled": settings.get('autosave_enabled', 'true').lower() == 'true',
+        "telegram_bot_token": settings.get('telegram_bot_token', ''),
+        "telegram_chat_id": settings.get('telegram_chat_id', ''),
+        "telegram_backup_enabled": settings.get('telegram_backup_enabled', 'false').lower() == 'true',
         "errors": [],
         "notices": [],
     }
@@ -773,6 +796,58 @@ async def settings_save_page(
     set_app_settings(settings)
 
     return RedirectResponse("/settings", status_code=303)
+
+
+@app.post("/settings/telegram", response_class=HTMLResponse)
+async def settings_telegram(
+    request: Request,
+    telegram_bot_token: str = Form(""),
+    telegram_chat_id: str = Form(""),
+    telegram_backup_enabled: str = Form("off"),
+) -> HTMLResponse:
+    """Сохраняет настройки Telegram-бэкапов (только для админов)."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/my-schedule", status_code=303)
+
+    from .database import set_app_settings
+
+    settings = {
+        'telegram_bot_token': telegram_bot_token.strip(),
+        'telegram_chat_id': telegram_chat_id.strip(),
+        'telegram_backup_enabled': 'true' if telegram_backup_enabled == 'on' else 'false',
+    }
+    set_app_settings(settings)
+
+    return RedirectResponse("/settings", status_code=303)
+
+
+@app.post("/settings/telegram-test", response_class=JSONResponse)
+async def settings_telegram_test(
+    request: Request,
+    bot_token: str = Form(...),
+    chat_id: str = Form(...),
+) -> JSONResponse:
+    """Тестовое отправка сообщения в Telegram (только для админов)."""
+    if not request.session.get("logged_in_user"):
+        return JSONResponse({"success": False, "error": "Не авторизован"}, status_code=401)
+    if request.session.get("user_role") != "admin":
+        return JSONResponse({"success": False, "error": "Доступ запрещён"}, status_code=403)
+
+    from .services.telegram_bot import send_text_message
+
+    token = bot_token.strip()
+    cid = chat_id.strip()
+
+    if not token or not cid:
+        return JSONResponse({"success": False, "error": "Укажите токен и Chat ID"})
+
+    ok = send_text_message(token, cid, "✅ Тестовое сообщение от ЕКЦ График. Бэкапы работают корректно!")
+    if ok:
+        return JSONResponse({"success": True})
+    else:
+        return JSONResponse({"success": False, "error": "Не удалось отправить сообщение. Проверьте токен и Chat ID."})
 
 
 @app.get("/settings/download-db")

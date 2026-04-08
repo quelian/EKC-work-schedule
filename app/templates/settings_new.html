@@ -33,9 +33,7 @@
 
             <div class="settings-divider mt-6"></div>
 
-            <!-- Download DB -->
-                <button type="submit" class="btn btn--primary">Сохранить</button>
-            </div>
+            <button type="submit" class="btn btn--primary">Сохранить</button>
 
             <div class="settings-divider"></div>
 
@@ -50,6 +48,75 @@
                 </a>
             </div>
         </form>
+    </div>
+
+    <!-- Telegram Backup Card -->
+    <div class="card">
+        <div class="section-head mb-4">
+            <div>
+                <h2 class="section-head__title">Telegram-бэкапы</h2>
+                <p class="section-head__desc">Ежедневная отправка архива БД в Telegram</p>
+            </div>
+        </div>
+
+        <form method="POST" action="/settings/telegram" class="space-y-3" id="telegramForm">
+            <!-- Backup Enabled Toggle -->
+            <div class="settings-row">
+                <div class="settings-row__info">
+                    <span class="settings-row__label">Включить бэкапы</span>
+                    <span class="settings-row__desc">Отправлять архив БД ежедневно в 22:00</span>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" name="telegram_backup_enabled"
+                           {% if telegram_backup_enabled %}checked{% endif %}>
+                    <span class="toggle__track"></span>
+                </label>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <!-- Bot Token -->
+            <div class="settings-row settings-row--vertical">
+                <div class="settings-row__info">
+                    <span class="settings-row__label">Токен бота</span>
+                    <span class="settings-row__desc">Токен из BotFather (например: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11)</span>
+                </div>
+                <div class="input-with-toggle" style="margin-top: 8px;">
+                    <input type="password" id="telegramBotToken" name="telegram_bot_token"
+                           value="{{ telegram_bot_token }}" class="input w-full"
+                           placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                           autocomplete="off">
+                    <button type="button" class="input-toggle" onclick="togglePasswordVisibility('telegramBotToken')" aria-label="Показать токен">
+                        <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <!-- Chat ID -->
+            <div class="settings-row settings-row--vertical">
+                <div class="settings-row__info">
+                    <span class="settings-row__label">Chat ID</span>
+                    <span class="settings-row__desc">ID чата/пользователя в Telegram (например: -1001234567890 или 123456789)</span>
+                </div>
+                <input type="text" name="telegram_chat_id" class="input w-full"
+                       value="{{ telegram_chat_id }}"
+                       placeholder="-1001234567890"
+                       style="margin-top: 8px;">
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-row" style="justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn--ghost" onclick="testTelegramConnection()">
+                    Отправить тест
+                </button>
+                <button type="submit" class="btn btn--primary">Сохранить</button>
+            </div>
+        </form>
+
+        <div id="telegramStatus" class="settings-status" style="display:none;"></div>
     </div>
 
     <!-- About Card -->
@@ -82,6 +149,11 @@
     justify-content: space-between;
     gap: 16px;
     padding: 4px 0;
+}
+
+.settings-row--vertical {
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 .settings-row__info {
@@ -141,6 +213,49 @@
     text-align: right;
 }
 
+.input-with-toggle {
+    position: relative;
+    width: 100%;
+}
+
+.input-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.input-toggle:hover {
+    color: var(--text-primary);
+}
+
+.settings-status {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.settings-status.success {
+    background: rgba(52, 199, 89, 0.1);
+    color: var(--apple-green);
+    display: block !important;
+}
+
+.settings-status.error {
+    background: rgba(255, 59, 48, 0.1);
+    color: var(--apple-red);
+    display: block !important;
+}
+
 @media (max-width: 768px) {
     .settings-row {
         flex-direction: column;
@@ -155,4 +270,40 @@
     }
 }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function testTelegramConnection() {
+    const statusEl = document.getElementById('telegramStatus');
+    statusEl.textContent = 'Отправка...';
+    statusEl.className = 'settings-status';
+    statusEl.style.display = 'block';
+
+    fetch('/settings/telegram-test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `bot_token=${encodeURIComponent(document.getElementById('telegramBotToken').value)}&chat_id=${encodeURIComponent(document.querySelector('input[name="telegram_chat_id"]').value)}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusEl.textContent = 'Тестовое сообщение отправлено успешно!';
+            statusEl.className = 'settings-status success';
+        } else {
+            statusEl.textContent = 'Ошибка: ' + (data.error || 'Неизвестная ошибка');
+            statusEl.className = 'settings-status error';
+        }
+    })
+    .catch(err => {
+        statusEl.textContent = 'Ошибка сети: ' + err.message;
+        statusEl.className = 'settings-status error';
+    });
+}
+</script>
 {% endblock %}
