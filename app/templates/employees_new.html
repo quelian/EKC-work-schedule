@@ -1022,11 +1022,11 @@ function editEmployee(employeeName) {
     document.getElementById('editRate').value = emp.rate.toString();
     document.getElementById('editType').value = emp.employee_type;
 
-    document.getElementById('editEmployeeModal').classList.add('active');
+    ModalSystem.open('editEmployeeModal');
 }
 
 function closeEditEmployeeModal() {
-    document.getElementById('editEmployeeModal').classList.remove('active');
+    ModalSystem.close('editEmployeeModal');
 }
 
 function showDeactivateConfirm(employeeName) {
