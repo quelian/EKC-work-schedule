@@ -6,7 +6,7 @@
 
 {% block header_actions %}
 <div class="flex flex-wrap gap-2">
-    <button onclick="ModalSystem.open('bulkImportModal')" class="btn btn--study">
+    <button onclick="handleImportClick()" class="btn btn--study">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
         Импорт учёбы из ЛК
     </button>
@@ -1995,7 +1995,13 @@
             </div>
 
             <div id="simpleTimeInputs">
-                <div class="form-grid">
+                <div id="simpleWholeDayCheckboxGroup" style="margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        <input type="checkbox" id="simplePrefWholeDay" style="width: 18px; height: 18px; accent-color: var(--blue-600); cursor: pointer;" onchange="onSimpleWholeDayChange()">
+                        <span>Весь день</span>
+                    </label>
+                </div>
+                <div id="timeFields" class="form-grid">
                     <div class="form-group">
                         <label class="form-label" id="simpleStartTimeLabel">Время начала</label>
                         <input type="time" name="start_time" id="simplePrefStart" class="input" value="18:00">
@@ -2890,12 +2896,18 @@ function selectSimplePrefType(element, prefType) {
     updateSimplePreferenceForm();
 }
 
+function onSimpleWholeDayChange() {
+    const timeFields = document.getElementById('timeFields');
+    timeFields.style.display = document.getElementById('simplePrefWholeDay').checked ? 'none' : '';
+}
+
 function updateSimplePreferenceForm() {
     const prefType = document.querySelector('#simplePrefTypeGroup input[name="preference_type"]:checked');
     const startTimeLabel = document.getElementById('simpleStartTimeLabel');
     const endTimeLabel = document.getElementById('simpleEndTimeLabel');
     const simpleTimeInputs = document.getElementById('simpleTimeInputs');
     const simpleOtherTextInput = document.getElementById('simpleOtherTextInput');
+    const wholeDayGroup = document.getElementById('simpleWholeDayCheckboxGroup');
 
     startTimeLabel.textContent = 'Время начала';
     endTimeLabel.textContent = 'Время окончания';
@@ -2906,9 +2918,11 @@ function updateSimplePreferenceForm() {
     if (isOther) {
         simpleTimeInputs.style.display = 'none';
         simpleOtherTextInput.style.display = 'block';
+        wholeDayGroup.style.display = 'none';
     } else {
         simpleTimeInputs.style.display = 'grid';
         simpleOtherTextInput.style.display = 'none';
+        wholeDayGroup.style.display = prefType && prefType.value === 'prefer_off' ? 'block' : 'none';
     }
 
     if (isNotBeforeOrAfter) {
@@ -2932,6 +2946,7 @@ function updateSimplePreferenceForm() {
         document.getElementById('simplePrefEnd').style.display = 'block';
         document.getElementById('simplePrefStart').required = false;
         document.getElementById('simplePrefEnd').required = false;
+        onSimpleWholeDayChange();
     }
 }
 
@@ -2948,6 +2963,14 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.style.display = 'none';
     }, 3000);
+}
+
+function handleImportClick() {
+    if (window.innerWidth <= 768) {
+        showToast('Доступно только с компьютера', 'info');
+        return;
+    }
+    ModalSystem.open('bulkImportModal');
 }
 
 function showBulkImportModal() {
