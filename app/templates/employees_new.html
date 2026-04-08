@@ -462,6 +462,27 @@
     .info-card svg { flex-shrink: 0; }
     .edit-modal-content { max-width: 560px; }
     #deleteConfirmModal .modal-dialog { max-width: 420px; }
+
+    /* ===== MODAL CENTERING FIX ===== */
+    .modal-backdrop {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 999 !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        display: none !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 20px !important;
+    }
+    .modal-backdrop.open {
+        display: flex !important;
+    }
+    .modal-dialog {
+        position: relative !important;
+        width: min(500px, 92%) !important;
+        max-height: 85vh !important;
+        overflow-y: auto !important;
+    }
 </style>
 {% endblock %}
 
