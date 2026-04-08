@@ -210,6 +210,8 @@
         </div>
 
         <form id="bulkImportForm" onsubmit="submitBulkImport(event)">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
             <div class="form-group">
                 <label for="bulkImportEmployee" class="form-label">Сотрудник</label>
                 <select name="employee_name" id="bulkImportEmployee" class="input" required>
@@ -282,6 +284,8 @@
                 <label for="preferenceNote" class="form-label">Комментарий</label>
                 <input type="text" name="note" id="preferenceNote" class="input" placeholder="Например: день рождения">
             </div>
+
+            <input type="hidden" name="preference_type" value="prefer_off">
 
             <div class="modal-footer">
                 <button type="button" onclick="ModalSystem.close('preferenceModal')" class="btn btn--secondary flex-1">Отмена</button>

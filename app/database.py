@@ -503,6 +503,16 @@ def list_operator_profiles(active_only: bool = False) -> list[OperatorProfile]:
     return [row_to_profile(row) for row in rows]
 
 
+def deactivate_operator(name: str) -> None:
+    """Sets is_active = 0 for the given operator."""
+    init_db()
+    with _get_connection() as connection:
+        connection.execute(
+            "UPDATE operators SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE name = ?",
+            (name,),
+        )
+
+
 def upsert_operator_profile(profile: OperatorProfile, original_name: str | None = None) -> None:
     init_db()
     normalized_rate = normalize_rate(profile.rate)
@@ -695,21 +705,42 @@ def list_vacation_entries_range(start_date: date, end_date: date) -> list[Vacati
 def upsert_vacation_entry(entry: VacationEntry) -> None:
     init_db()
     with _get_connection() as connection:
-        connection.execute(
-            """
-            INSERT INTO vacations (employee_name, start_date, end_date, note)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(employee_name, start_date, end_date) DO UPDATE SET
-                note = excluded.note,
-                updated_at = CURRENT_TIMESTAMP
-            """,
-            (
-                entry.employee_name,
-                entry.start_date.isoformat(),
-                entry.end_date.isoformat(),
-                entry.note,
-            ),
-        )
+        if entry.id and entry.id > 0:
+            # Update by ID when editing an existing vacation
+            connection.execute(
+                """
+                UPDATE vacations SET
+                    employee_name = ?,
+                    start_date = ?,
+                    end_date = ?,
+                    note = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (
+                    entry.employee_name,
+                    entry.start_date.isoformat(),
+                    entry.end_date.isoformat(),
+                    entry.note,
+                    entry.id,
+                ),
+            )
+        else:
+            connection.execute(
+                """
+                INSERT INTO vacations (employee_name, start_date, end_date, note)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(employee_name, start_date, end_date) DO UPDATE SET
+                    note = excluded.note,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    entry.employee_name,
+                    entry.start_date.isoformat(),
+                    entry.end_date.isoformat(),
+                    entry.note,
+                ),
+            )
         connection.commit()
 
 

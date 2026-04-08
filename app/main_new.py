@@ -2005,6 +2005,25 @@ async def reset_employee_adjustments(
     return response
 
 
+@app.post("/employees/deactivate", response_class=HTMLResponse)
+async def deactivate_employee(
+    request: Request,
+    employee_name: str = Form(...),
+):
+    """Деактивирует сотрудника (только для админов)."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/my-schedule", status_code=303)
+
+    from .database import deactivate_operator
+
+    deactivate_operator(employee_name)
+
+    request.session["flash_success"] = f"Сотрудник «{employee_name}» деактивирован"
+    return RedirectResponse("/employees", status_code=303)
+
+
 # =============================================================================
 # VACATIONS - Отпуска
 # =============================================================================
@@ -2016,6 +2035,7 @@ async def save_vacation(
     vacation_start_date: str = Form(...),
     vacation_end_date: str = Form(...),
     vacation_note: str = Form(""),
+    vacation_id: int = Form(0),
     return_year: int = None,
     return_month: int = None,
 ):
@@ -2052,6 +2072,7 @@ async def save_vacation(
                 start_date=start_date,
                 end_date=end_date,
                 note=vacation_note,
+                id=vacation_id,
             )
         )
     except Exception as e:
