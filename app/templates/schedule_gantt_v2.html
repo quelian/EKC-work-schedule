@@ -567,6 +567,10 @@
     white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; line-height: 1.3;
 }
+.shift-blk.short-shift .shift-time,
+.shift-blk.short-shift .shift-note {
+    display: none;
+}
 
 /* Delete button — iOS style */
 .shift-del {
@@ -1841,6 +1845,8 @@ function renderShiftBlocks(empName, dates) {
         const right = timeToPixel(shift.end_time, shift.date, dates);
         const width = Math.max(right - left, 24);
         const typeCls = shift.shift_type === 'applications_only' ? ' type-apps' : '';
+        const slotWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot-width')) || 44;
+        const shortCls = width < slotWidth ? ' short-shift' : '';
         const sel = S.selectedShift && S.selectedShift.id === shift.id ? ' selected' : '';
         const conflicts = detectConflicts(shift);
         let confCls = '';
@@ -1848,7 +1854,7 @@ function renderShiftBlocks(empName, dates) {
         else if (conflicts.overlap) confCls = ' conflict-soft';
         else if (conflicts.overHours) confCls = ' conflict-over';
 
-        html += `<div class="shift-blk shift-blk-enter${typeCls}${confCls}${sel}"
+        html += `<div class="shift-blk shift-blk-enter${typeCls}${confCls}${shortCls}${sel}"
                       style="left:${left}px;width:${width}px;"
                       data-shift-id="${shift.id}"
                       onmousedown="window._editor.onShiftMouseDown(event, ${shift.id})"
