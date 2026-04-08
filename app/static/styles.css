@@ -717,6 +717,10 @@ select.input {
 .modal-backdrop {
     position: fixed;
     inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 999;
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
@@ -725,6 +729,7 @@ select.input {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    overflow-y: auto;
     opacity: 0;
     pointer-events: none;
     transition: opacity 200ms ease;
@@ -743,12 +748,14 @@ select.input {
     max-height: 85vh;
     overflow-y: auto;
     padding: 24px;
+    margin: auto;
     transform: translateY(12px) scale(0.98);
     transition: transform 200ms ease;
 }
 
 .modal-backdrop.open .modal-dialog {
     transform: translateY(0) scale(1);
+    margin: auto;
 }
 
 .modal-backdrop--sm .modal-dialog {

@@ -969,7 +969,7 @@ const employeesData = {
 };
 
 function showAddEmployeeModal() {
-    document.getElementById('addEmployeeModal').classList.add('active');
+    ModalSystem.open('addEmployeeModal');
     setTimeout(() => {
         const nameInput = document.getElementById('addName');
         if (nameInput) nameInput.focus();
@@ -977,11 +977,11 @@ function showAddEmployeeModal() {
 }
 
 function closeAddEmployeeModal() {
-    document.getElementById('addEmployeeModal').classList.remove('active');
+    ModalSystem.close('addEmployeeModal');
 }
 
 function showAddVacationModal() {
-    document.getElementById('addVacationModal').classList.add('active');
+    ModalSystem.open('addVacationModal');
     setTimeout(() => {
         const sel = document.getElementById('vacationEmployee');
         if (sel) sel.focus();
@@ -989,7 +989,7 @@ function showAddVacationModal() {
 }
 
 function closeAddVacationModal() {
-    document.getElementById('addVacationModal').classList.remove('active');
+    ModalSystem.close('addVacationModal');
 }
 
 function adjustHours(employeeName, delta) {
@@ -1004,7 +1004,7 @@ function showResetAdjustmentConfirm(employeeName) {
     document.getElementById('deleteActionType').value = 'reset_adjustment';
     document.getElementById('deleteEmployeeNameValue').value = employeeName;
     document.getElementById('deleteConfirmMessage').textContent = `Сбросить корректировку часов для сотрудника ${employeeName}?`;
-    document.getElementById('deleteConfirmModal').classList.add('active');
+    ModalSystem.open('deleteConfirmModal');
 }
 
 function resetAdjustment(employeeName) {
@@ -1033,7 +1033,7 @@ function showDeactivateConfirm(employeeName) {
     document.getElementById('deleteActionType').value = 'deactivate';
     document.getElementById('deleteEmployeeNameValue').value = employeeName;
     document.getElementById('deleteConfirmMessage').textContent = `Деактивировать сотрудника ${employeeName}?`;
-    document.getElementById('deleteConfirmModal').classList.add('active');
+    ModalSystem.open('deleteConfirmModal');
 }
 
 function deactivateEmployee(employeeName) {
@@ -1041,7 +1041,7 @@ function deactivateEmployee(employeeName) {
 }
 
 function closeDeleteModal() {
-    document.getElementById('deleteConfirmModal').classList.remove('active');
+    ModalSystem.close('deleteConfirmModal');
 }
 
 function confirmDeleteAction() {
