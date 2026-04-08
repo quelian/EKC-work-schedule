@@ -739,16 +739,19 @@ select.input {
     background: var(--card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
-    width: min(500px, 100%);
+    width: min(500px, 92%);
     max-height: 85vh;
     overflow-y: auto;
     padding: 24px;
+    position: relative;
     transform: translateY(12px) scale(0.98);
-    transition: transform 200ms ease;
+    opacity: 0;
+    transition: transform 200ms ease, opacity 200ms ease;
 }
 
 .modal-backdrop.open .modal-dialog {
     transform: translateY(0) scale(1);
+    opacity: 1;
 }
 
 .modal-backdrop--sm .modal-dialog {
