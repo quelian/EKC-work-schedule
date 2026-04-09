@@ -1112,6 +1112,7 @@ async def my_schedule_page(
         "preferences": preferences,
         "monthly_preferences": monthly_prefs,
         "active_page": "my-schedule",
+        "user_role": request.session.get("user_role"),
         "errors": [],
         "notices": [],
     }

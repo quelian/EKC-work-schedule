@@ -1,7 +1,7 @@
 {% extends "base_new.html" %}
 
 {% block title %}Моя занятость - {{ employee_name }}{% endblock %}
-{% block page_title %}Моя занятость{% endblock %}
+{% block page_title %}{% if user_role == 'admin' %}Занятость {{ employee_name }}{% else %}Моя занятость{% endif %}{% endblock %}
 {% block page_subtitle %}Календарь учёбы и пожеланий на {{ month_label }}{% endblock %}
 
 {% block header_actions %}
