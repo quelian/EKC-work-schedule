@@ -21,7 +21,6 @@ def merge_employee_lists(primary: list[Employee], secondary: list[Employee]) -> 
 def default_form_values() -> dict[str, str]:
     return {
         "holiday_dates": "",
-        "operators_dir": "операторы",
     }
 
 

@@ -12,6 +12,7 @@ def start_backup_scheduler() -> AsyncIOScheduler:
     """Запускает планировщик ежедневных бэкапов в 22:00."""
     from ..database import get_app_settings, get_db_path
     from .telegram_bot import send_backup
+    from .telegram_notifications import notify_backup_success, notify_backup_failed
 
     scheduler = AsyncIOScheduler()
 
@@ -37,8 +38,10 @@ def start_backup_scheduler() -> AsyncIOScheduler:
 
         if success:
             logger.info("Daily Telegram backup: SUCCESS")
+            notify_backup_success()
         else:
             logger.error("Daily Telegram backup: FAILED")
+            notify_backup_failed()
 
     scheduler.add_job(
         job,

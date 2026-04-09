@@ -463,22 +463,19 @@ def set_app_settings(settings: dict[str, str]) -> None:
     }
     with _get_connection() as connection:
         for key, value in normalized_items.items():
-            if value:
-                connection.execute(
-                    """
-                    INSERT INTO app_settings (key, value)
-                    VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET
-                        value = excluded.value,
-                        updated_at = CURRENT_TIMESTAMP
-                    """,
-                    (key, value),
-                )
-            else:
-                connection.execute(
-                    "DELETE FROM app_settings WHERE key = ?",
-                    (key,),
-                )
+            if not value:
+                # Skip empty values — don't overwrite existing settings with empty strings
+                continue
+            connection.execute(
+                """
+                INSERT INTO app_settings (key, value)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = excluded.value,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (key, value),
+            )
         connection.commit()
 
 

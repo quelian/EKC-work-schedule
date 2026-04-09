@@ -260,6 +260,16 @@ async def create_shift(request: Request, payload: ShiftCreate):
             shift_type=payload.shift_type,
             note=payload.note,
         )
+        # Telegram notification: shift created via API
+        try:
+            from ..services.telegram_notifications import notify_schedule_save
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_schedule_save(
+                actor, payload.employee_name.strip(), payload.date,
+                payload.start_time, payload.end_time, payload.shift_type,
+            )
+        except Exception:
+            pass
         return JSONResponse({"status": "ok", "shift": shift})
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
@@ -313,6 +323,19 @@ async def update_shift(request: Request, payload: ShiftUpdate):
         if shift is None:
             return JSONResponse({"error": "Смена не найдена"}, status_code=404)
 
+        # Telegram notification: shift updated via API
+        try:
+            from ..services.telegram_notifications import notify_schedule_save
+            actor = request.session.get("logged_in_user", "unknown")
+            emp = payload.employee_name or shift.get("employee_name", "?")
+            dt = payload.date or shift.get("date", "?")
+            st = payload.start_time or shift.get("start_time", "?")
+            et = payload.end_time or shift.get("end_time", "?")
+            st_type = payload.shift_type or shift.get("shift_type", "?")
+            notify_schedule_save(actor, emp, dt, st, et, st_type)
+        except Exception:
+            pass
+
         return JSONResponse({"status": "ok", "shift": shift})
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
@@ -338,9 +361,20 @@ async def delete_shift(request: Request, payload: ShiftDelete):
         return JSONResponse({"error": "Повторный запрос. Подождите немного."}, status_code=429)
 
     try:
+        # Get shift info before deletion for notification
+        current_shift = find_schedule_assignment_by_id(payload.shift_id)
         success = delete_schedule_assignment_by_id(payload.shift_id)
         if not success:
             return JSONResponse({"error": "Смена не найдена"}, status_code=404)
+
+        # Telegram notification: shift deleted via API
+        if current_shift:
+            try:
+                from ..services.telegram_notifications import notify_schedule_delete
+                actor = request.session.get("logged_in_user", "unknown")
+                notify_schedule_delete(actor, current_shift.get("employee_name", "?"), str(current_shift.get("date", "?")))
+            except Exception:
+                pass
 
         return JSONResponse({"status": "ok"})
     except ValueError as e:
@@ -399,6 +433,22 @@ async def set_non_working(request: Request):
         selected.discard(target)
 
     save_calendar_overrides_for_month(target.year, target.month, selected)
+
+    # Telegram notification: calendar override changed
+    try:
+        from ..services.telegram_notifications import _send, _now
+        actor = request.session.get("logged_in_user", "unknown")
+        status_label = "выходным" if is_non_working else "рабочим"
+        text = (
+            f"\U0001F4C5 <b>Календарь изменён</b>\n"
+            f"├ Администратор: <b>{actor}</b>\n"
+            f"├ Дата: {target_str}\n"
+            f"├ Статус: {status_label}\n"
+            f"└ Время: {_now()}"
+        )
+        _send(text)
+    except Exception:
+        pass
 
     # Determine view range from the request or default to the current month
     qs = request.query_params

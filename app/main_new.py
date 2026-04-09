@@ -99,7 +99,23 @@ async def lifespan(application: FastAPI):
     from .services.backup_scheduler import start_backup_scheduler
     start_backup_scheduler()
 
+    # Telegram notification: server start
+    try:
+        import socket
+        from .services.telegram_notifications import notify_server_start
+        local_ip = socket.gethostbyname(socket.gethostname())
+        notify_server_start(local_ip, 8001)
+    except Exception:
+        pass
+
     yield
+
+    # Telegram notification: server stop
+    try:
+        from .services.telegram_notifications import notify_server_stop
+        notify_server_stop()
+    except Exception:
+        pass
 
     from .services.backup_scheduler import shutdown_scheduler
     shutdown_scheduler()
@@ -795,6 +811,14 @@ async def settings_save_page(
 
     set_app_settings(settings)
 
+    # Telegram notification: settings change
+    try:
+        from .services.telegram_notifications import notify_settings_change
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_settings_change(actor, "Автосохранение", "—", "вкл" if autosave_enabled == 'on' else "выкл")
+    except Exception:
+        pass
+
     return RedirectResponse("/settings", status_code=303)
 
 
@@ -819,6 +843,20 @@ async def settings_telegram(
         'telegram_backup_enabled': 'true' if telegram_backup_enabled == 'on' else 'false',
     }
     set_app_settings(settings)
+
+    # Telegram notification: telegram settings change
+    try:
+        from .services.telegram_notifications import notify_telegram_settings_change
+        actor = request.session.get("logged_in_user", "unknown")
+        changed = []
+        if telegram_bot_token.strip():
+            changed.append("токен бота")
+        if telegram_chat_id.strip():
+            changed.append("chat ID")
+        changed.append("бэкапы " + ("вкл" if telegram_backup_enabled == 'on' else "выкл"))
+        notify_telegram_settings_change(actor, changed)
+    except Exception:
+        pass
 
     return RedirectResponse("/settings", status_code=303)
 
@@ -1118,6 +1156,13 @@ async def add_unavailable(
             note=note,
             is_strict=True,
         )
+        # Telegram notification: constraint add
+        try:
+            from .services.telegram_notifications import notify_constraint_add
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_constraint_add(actor, employee_name, date, start_time, end_time, note)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to add study constraint: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось добавить ограничение. Попробуйте ещё раз."
@@ -1151,6 +1196,13 @@ async def delete_unavailable(
     try:
         parsed_date = parse_date(date, "date")
         delete_study_constraint(employee_name, parsed_date, start_time, end_time)
+        # Telegram notification: constraint delete
+        try:
+            from .services.telegram_notifications import notify_constraint_delete
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_constraint_delete(actor, employee_name, date, start_time, end_time)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to delete study constraint: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось удалить ограничение. Попробуйте ещё раз."
@@ -1198,8 +1250,14 @@ async def add_preference(
             start_time=final_start if final_start and final_start.strip() else None,
             end_time=final_end if final_end and final_end.strip() else None,
         )
+        # Telegram notification: preference add
+        try:
+            from .services.telegram_notifications import notify_preference_add
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_preference_add(actor, employee_name, date, preference_type, final_note)
+        except Exception:
+            pass
     except Exception as e:
-        logger.error("Failed to add preference: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось добавить пожелание. Попробуйте ещё раз."
 
     return RedirectResponse(f"/my-schedule?employee_name={employee_name}&year={year}&month={month}", status_code=303)
@@ -1253,6 +1311,15 @@ async def add_study_bulk(
         request.session["flash_error"] = f"Добавлено {success_count} учебных занятий, ошибок: {error_count}"
     else:
         request.session["flash_success"] = f"Добавлено {success_count} учебных занятий"
+
+    # Telegram notification: bulk add
+    if success_count > 0:
+        try:
+            from .services.telegram_notifications import notify_bulk_add
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_bulk_add(actor, employee_name, "study", success_count, error_count)
+        except Exception:
+            pass
 
     return RedirectResponse(f"/my-schedule?employee_name={employee_name}&year={year}&month={month}", status_code=303)
 
@@ -1314,6 +1381,15 @@ async def add_preference_bulk(
     else:
         request.session["flash_success"] = f"Добавлено {success_count} пожеланий"
 
+    # Telegram notification: bulk add
+    if success_count > 0:
+        try:
+            from .services.telegram_notifications import notify_bulk_add
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_bulk_add(actor, employee_name, "preference", success_count, error_count)
+        except Exception:
+            pass
+
     return RedirectResponse(f"/my-schedule?employee_name={employee_name}&year={year}&month={month}", status_code=303)
 
 
@@ -1341,6 +1417,13 @@ async def delete_preference(
     try:
         parsed_date = parse_date(date, "date")
         delete_schedule_preference(employee_name, parsed_date, preference_type)
+        # Telegram notification: preference delete
+        try:
+            from .services.telegram_notifications import notify_preference_delete
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_preference_delete(actor, employee_name, date, preference_type)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to delete preference: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось удалить пожелание. Попробуйте ещё раз."
@@ -1388,6 +1471,13 @@ async def add_monthly_preference(
             time_value=final_time,
             note=final_note,
         )
+        # Telegram notification: monthly preference add
+        try:
+            from .services.telegram_notifications import notify_monthly_preference_add
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_monthly_preference_add(actor, employee_name, year, month, preference_type, final_time or "", final_note)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to add monthly preference: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось добавить пожелание. Попробуйте ещё раз."
@@ -1437,6 +1527,13 @@ async def edit_monthly_preference(
             note=note,
         )
         request.session["flash_success"] = "Пожелание обновлено"
+        # Telegram notification: monthly preference edit
+        try:
+            from .services.telegram_notifications import notify_monthly_preference_edit
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_monthly_preference_edit(actor, employee_name, year, month, old_preference_type, preference_type)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to update preference: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось обновить пожелание. Попробуйте ещё раз."
@@ -1465,6 +1562,13 @@ async def delete_monthly_pref_endpoint(
             month=month,
             preference_type=preference_type,
         )
+        # Telegram notification: monthly preference delete
+        try:
+            from .services.telegram_notifications import notify_monthly_preference_delete
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_monthly_preference_delete(actor, employee_name, year, month, preference_type)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to delete monthly preference: %s", e, exc_info=True)
         request.session["flash_error"] = "Ошибка удаления. Попробуйте ещё раз."
@@ -1522,6 +1626,13 @@ async def add_constraint(
                 note=note,
                 is_strict=True,
             )
+            # Telegram notification: constraint add
+            try:
+                from .services.telegram_notifications import notify_constraint_add
+                actor = request.session.get("logged_in_user", "unknown")
+                notify_constraint_add(actor, employee_name, date, start_time, end_time, note)
+            except Exception:
+                pass
         elif is_preference:
             # Пожелание (including full-day with empty time)
             upsert_schedule_preference(
@@ -1532,6 +1643,13 @@ async def add_constraint(
                 start_time=start_time if has_time else None,
                 end_time=end_time if has_time else None,
             )
+            # Telegram notification: preference add
+            try:
+                from .services.telegram_notifications import notify_preference_add
+                actor = request.session.get("logged_in_user", "unknown")
+                notify_preference_add(actor, employee_name, date, preference_type, note)
+            except Exception:
+                pass
     except Exception as e:
         logger.error("Failed to add constraint: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось добавить ограничение. Попробуйте ещё раз."
@@ -1569,6 +1687,13 @@ async def delete_constraint(
             start_time=start_time,
             end_time=end_time,
         )
+        # Telegram notification: constraint delete
+        try:
+            from .services.telegram_notifications import notify_constraint_delete
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_constraint_delete(actor, employee_name, date, start_time, end_time)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to delete constraint: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось удалить ограничение. Попробуйте ещё раз."
@@ -1724,6 +1849,13 @@ async def login_submit(
     success, message = await process_login(request, employee_name, password)
 
     if success:
+        # Telegram notification: login
+        try:
+            from .services.telegram_notifications import notify_login
+            user_role = request.session.get("user_role", "employee")
+            notify_login(employee_name, user_role, client_ip)
+        except Exception:
+            pass
         response = RedirectResponse("/", status_code=303)
         return response
 
@@ -1746,6 +1878,15 @@ async def login_submit(
 @app.get("/logout", response_class=HTMLResponse)
 async def logout(request: Request) -> HTMLResponse:
     """Выход из системы."""
+    # Telegram notification: logout
+    try:
+        from .services.telegram_notifications import notify_logout
+        user = request.session.get("logged_in_user")
+        role = request.session.get("user_role")
+        if user:
+            notify_logout(user, role or "employee")
+    except Exception:
+        pass
     process_logout(request)
     return RedirectResponse("/login", status_code=303)
 
@@ -1792,6 +1933,15 @@ async def change_password_submit(
         return templates.TemplateResponse("change_password.html", context)
 
     success, message = await change_user_password(request, current_password, new_password)
+
+    if success:
+        try:
+            from .services.telegram_notifications import notify_password_change
+            current_user = get_current_user(request)
+            if current_user:
+                notify_password_change(current_user)
+        except Exception:
+            pass
 
     current_user = get_current_user(request)
     context = {
@@ -1848,6 +1998,15 @@ async def admin_promote_user(request: Request, employee_name: str = Form(...)) -
         return RedirectResponse("/admin/users", status_code=303)
 
     update_user_role(employee_name, "admin")
+
+    # Telegram notification: user promote
+    try:
+        from .services.telegram_notifications import notify_user_promote
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_user_promote(actor, employee_name)
+    except Exception:
+        pass
+
     return RedirectResponse("/admin/users", status_code=303)
 
 
@@ -1865,6 +2024,15 @@ async def admin_demote_user(request: Request, employee_name: str = Form(...)) ->
         return RedirectResponse("/admin/users", status_code=303)
 
     update_user_role(employee_name, "employee")
+
+    # Telegram notification: user demote
+    try:
+        from .services.telegram_notifications import notify_user_demote
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_user_demote(actor, employee_name)
+    except Exception:
+        pass
+
     return RedirectResponse("/admin/users", status_code=303)
 
 
@@ -1888,6 +2056,14 @@ async def admin_create_user(
         # Пользователь уже существует
         return RedirectResponse("/admin/users?error=exists", status_code=303)
 
+    # Telegram notification: user create
+    try:
+        from .services.telegram_notifications import notify_user_create
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_user_create(actor, employee_name, role)
+    except Exception:
+        pass
+
     return RedirectResponse("/admin/users", status_code=303)
 
 
@@ -1905,6 +2081,15 @@ async def admin_delete_user(request: Request, employee_name: str = Form(...)) ->
         return RedirectResponse("/admin/users", status_code=303)
 
     delete_user_credentials(employee_name)
+
+    # Telegram notification: user delete
+    try:
+        from .services.telegram_notifications import notify_user_delete
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_user_delete(actor, employee_name)
+    except Exception:
+        pass
+
     return RedirectResponse("/admin/users", status_code=303)
 
 
@@ -1922,6 +2107,14 @@ async def admin_reset_password(
         return RedirectResponse("/", status_code=303)
 
     update_user_password(employee_name, new_password)
+
+    # Telegram notification: password reset
+    try:
+        from .services.telegram_notifications import notify_user_password_reset
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_user_password_reset(actor, employee_name)
+    except Exception:
+        pass
 
     return RedirectResponse("/admin/users", status_code=303)
 
@@ -1979,6 +2172,14 @@ async def adjust_employee_hours(
 
     # Сохраняем в БД
     update_employee_month_adjustment(employee_name, year, month, new_adjustment)
+
+    # Telegram notification: employee adjustment
+    try:
+        from .services.telegram_notifications import notify_employee_adjustment
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_employee_adjustment(actor, employee_name, delta, new_adjustment, year, month)
+    except Exception:
+        pass
 
     response = RedirectResponse("/employees", status_code=303)
     response.set_cookie('ekc_year', str(year), max_age=365*24*60*60)
@@ -2048,6 +2249,14 @@ async def update_employee(
 
     upsert_operator_profile(profile, original_name=original_name if original_name else None)
 
+    # Telegram notification: employee update
+    try:
+        from .services.telegram_notifications import notify_employee_update
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_employee_update(actor, name, original_name or None, normalized_rate, employee_type)
+    except Exception:
+        pass
+
     response = RedirectResponse("/employees", status_code=303)
     response.set_cookie('ekc_year', str(year), max_age=365*24*60*60)
     response.set_cookie('ekc_month', str(month), max_age=365*24*60*60)
@@ -2094,6 +2303,14 @@ async def deactivate_employee(
     from .database import deactivate_operator
 
     deactivate_operator(employee_name)
+
+    # Telegram notification: employee deactivate
+    try:
+        from .services.telegram_notifications import notify_employee_deactivate
+        actor = request.session.get("logged_in_user", "unknown")
+        notify_employee_deactivate(actor, employee_name)
+    except Exception:
+        pass
 
     request.session["flash_success"] = f"Сотрудник «{employee_name}» деактивирован"
     return RedirectResponse("/employees", status_code=303)
@@ -2150,6 +2367,13 @@ async def save_vacation(
                 id=vacation_id,
             )
         )
+        # Telegram notification: vacation save
+        try:
+            from .services.telegram_notifications import notify_vacation_save
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_vacation_save(actor, vacation_employee_name, vacation_start_date, vacation_end_date, vacation_note)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to add vacation: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось добавить отпуск. Попробуйте ещё раз."
@@ -2191,7 +2415,21 @@ async def delete_vacation(
         redirect_page = "/vacations"
 
     try:
+        # Find employee name before deletion
+        vacation_employee = None
+        for v in list_vacation_entries():
+            if v.id == vacation_id:
+                vacation_employee = v.employee_name
+                break
         delete_vacation_entry(vacation_id)
+        # Telegram notification: vacation delete
+        if vacation_employee:
+            try:
+                from .services.telegram_notifications import notify_vacation_delete
+                actor = request.session.get("logged_in_user", "unknown")
+                notify_vacation_delete(actor, vacation_employee, vacation_id)
+            except Exception:
+                pass
     except Exception as e:
         logger.error("Failed to delete vacation: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось удалить отпуск. Попробуйте ещё раз."
@@ -2299,6 +2537,13 @@ async def save_schedule_shift(
             shift_type=shift_type,
             note=note,
         )
+        # Telegram notification: schedule save
+        try:
+            from .services.telegram_notifications import notify_schedule_save
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_schedule_save(actor, employee_name, date, start_time, end_time, shift_type)
+        except Exception:
+            pass
     except Exception as e:
         logger.error("Failed to save schedule shift: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось сохранить смену. Попробуйте ещё раз."
@@ -2340,6 +2585,13 @@ async def delete_schedule_shift(
                 shift['start_time'],
                 shift['end_time'],
             )
+            # Telegram notification: schedule delete
+            try:
+                from .services.telegram_notifications import notify_schedule_delete
+                actor = request.session.get("logged_in_user", "unknown")
+                notify_schedule_delete(actor, shift['employee_name'], str(shift['date']))
+            except Exception:
+                pass
     except Exception as e:
         logger.error("Failed to delete schedule shift: %s", e, exc_info=True)
         request.session["flash_error"] = "Не удалось удалить смену. Попробуйте ещё раз."

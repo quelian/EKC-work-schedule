@@ -552,10 +552,6 @@
 .shift-blk.conflict-soft {
     border: 2px solid var(--sys-orange);
 }
-.shift-blk.conflict-over {
-    outline: 2px solid var(--sys-orange);
-    outline-offset: 2px;
-}
 
 .shift-time {
     font-weight: 700; font-size: 14px;
@@ -1274,7 +1270,6 @@ const S = {
     drag: { active: false, mode: null, empName: null, dateStr: null, startSlot: 0, endSlot: 0, shiftId: null, origShift: null },
     moveDrag: { active: false, shiftId: null, moved: false, suppressClickUntil: 0 },
     isLoading: true, syncStatus: 'saved', theme: 'light', zoomLevel: 1.0,
-    RATE_LIMITS: { 0.25: 2, 0.5: 4, 0.75: 6, 1.0: 8 },
 };
 let shiftActionPending = false;
 
@@ -1852,7 +1847,6 @@ function renderShiftBlocks(empName, dates) {
         let confCls = '';
         if (conflicts.hard) confCls = ' conflict-hard';
         else if (conflicts.overlap) confCls = ' conflict-soft';
-        else if (conflicts.overHours) confCls = ' conflict-over';
 
         html += `<div class="shift-blk shift-blk-enter${typeCls}${confCls}${shortCls}${sel}"
                       style="left:${left}px;width:${width}px;"
@@ -2008,7 +2002,7 @@ function normalizeMonthlyPrefType(t) {
 
 // ===== CONFLICT DETECTION =====
 function detectConflicts(shift) {
-    const r = { hard: false, overlap: false, overHours: false };
+    const r = { hard: false, overlap: false };
     const sS = timeToMin(shift.start_time), sE = timeToMin(shift.end_time);
     const avail = S.availability[shift.date]?.[shift.employee_name];
     if (avail) for (const b of avail.blocks) {
@@ -2020,13 +2014,6 @@ function detectConflicts(shift) {
         if (other.employee_name === shift.employee_name && other.date === shift.date && other.id !== shift.id) {
             if (!(sE <= timeToMin(other.start_time) || sS >= timeToMin(other.end_time))) { r.overlap = true; break; }
         }
-    }
-    const emp = S.employees.find(e => e.name === shift.employee_name);
-    if (emp) {
-        const limit = S.RATE_LIMITS[emp.rate] || 8;
-        const total = S.shifts.filter(s => s.employee_name === shift.employee_name && s.date === shift.date)
-            .reduce((sum, s) => sum + (timeToMin(s.end_time) - timeToMin(s.start_time)), 0);
-        if (total / 60 > limit) r.overHours = true;
     }
     return r;
 }
@@ -2103,7 +2090,6 @@ function showTip(el) {
     let extra = '';
     if (c.hard) extra = '\n⛔ Конфликт: учёба/отпуск';
     else if (c.overlap) extra = '\n⚠️ Пересечение с другой сменой';
-    else if (c.overHours) extra = '\n⚠️ Превышение нормы часов';
     const tip = document.createElement('div');
     tip.className = 'g-tooltip visible';
     tip.id = '_shiftTooltip'; tip._tipEl = tip;
@@ -2433,7 +2419,6 @@ function checkModalConflicts() {
     const box = document.getElementById('conflictBox');
     if (c.hard) { box.className = 'conflict-box hard'; box.style.display = 'block'; box.textContent = 'Конфликт: пересечение с учёбой или отпуском'; }
     else if (c.overlap) { box.className = 'conflict-box soft'; box.style.display = 'block'; box.textContent = 'Наложение с другой сменой'; }
-    else if (c.overHours) { box.className = 'conflict-box soft'; box.style.display = 'block'; box.textContent = 'Превышение нормы часов на день'; }
     else { hideConflictBox(); }
 }
 function hideConflictBox() { const b = document.getElementById('conflictBox'); if (b) { b.style.display = 'none'; b.textContent = ''; } }

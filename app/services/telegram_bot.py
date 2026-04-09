@@ -3,6 +3,7 @@ import httpx
 import io
 import zipfile
 import logging
+import time
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -14,13 +15,13 @@ def _make_url(token: str, method: str) -> str:
     return TELEGRAM_API.format(token=token, method=method)
 
 
-def send_text_message(bot_token: str, chat_id: str, text: str) -> bool:
+def send_text_message(bot_token: str, chat_id: str, text: str, parse_mode: str = "HTML") -> bool:
     """Отправляет текстовое сообщение в Telegram."""
     try:
         with httpx.Client(timeout=30) as client:
             resp = client.post(
                 _make_url(bot_token, "sendMessage"),
-                json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+                json={"chat_id": chat_id, "text": text, "parse_mode": parse_mode},
             )
             resp.raise_for_status()
             return True
@@ -48,7 +49,7 @@ def send_backup(bot_token: str, chat_id: str, db_path: Path) -> bool:
 
         zip_buffer.seek(0)
 
-        timestamp = __import__("time").strftime("%Y-%m-%d %H:%M")
+        timestamp = time.strftime("%Y-%m-%d %H:%M")
         caption = f"Автоматический бэкап БД — {timestamp}"
 
         with httpx.Client(timeout=120) as client:
@@ -56,7 +57,7 @@ def send_backup(bot_token: str, chat_id: str, db_path: Path) -> bool:
                 _make_url(bot_token, "sendDocument"),
                 data={"chat_id": chat_id, "caption": caption},
                 files={
-                    "document": (f"ekc_backup_{__import__('time').strftime('%Y%m%d')}.zip", zip_buffer, "application/zip"),
+                    "document": (f"ekc_backup_{time.strftime('%Y%m%d')}.zip", zip_buffer, "application/zip"),
                 },
             )
             resp.raise_for_status()
@@ -66,3 +67,17 @@ def send_backup(bot_token: str, chat_id: str, db_path: Path) -> bool:
     except Exception as e:
         logger.error(f"Telegram send_backup error: {e}")
         return False
+
+
+def get_me(bot_token: str) -> dict | None:
+    """Проверяет токен бота, возвращает информацию о боте."""
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(_make_url(bot_token, "getMe"))
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("ok"):
+                return data["result"]
+    except Exception as e:
+        logger.error(f"Telegram get_me error: {e}")
+    return None

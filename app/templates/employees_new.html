@@ -608,15 +608,11 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                             Корректировка
                         </span>
-                        {% if has_adjustment %}
                         <div class="emp-card__adjust">
                             <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', -1)" title="−1 час">−</button>
                             <span class="emp-card__adj-val {% if manual_adjustment > 0 %}emp-card__adj-val--pos{% elif manual_adjustment < 0 %}emp-card__adj-val--neg{% endif %}">{{ '+' if manual_adjustment > 0 else '' }}{{ manual_adjustment|int }}</span>
                             <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', 1)" title="+1 час">+</button>
                         </div>
-                        {% else %}
-                        <span class="emp-card__stat-value text-muted">—</span>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -716,15 +712,11 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                             Корректировка
                         </span>
-                        {% if has_adjustment %}
                         <div class="emp-card__adjust">
                             <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', -1)" title="−1 час">−</button>
                             <span class="emp-card__adj-val {% if manual_adjustment > 0 %}emp-card__adj-val--pos{% elif manual_adjustment < 0 %}emp-card__adj-val--neg{% endif %}">{{ '+' if manual_adjustment > 0 else '' }}{{ manual_adjustment|int }}</span>
                             <button class="emp-card__adj-btn" onclick="adjustHours('{{ employee.name }}', 1)" title="+1 час">+</button>
                         </div>
-                        {% else %}
-                        <span class="emp-card__stat-value text-muted">—</span>
-                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -199,6 +199,13 @@ async def save_study_constraint(
             note=note.strip(),
             is_strict=(is_strict == 1),
         )
+        # Telegram notification: constraint add
+        try:
+            from .services.telegram_notifications import notify_constraint_add
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_constraint_add(actor, employee_name.strip(), constraint_date, start_time, end_time, note.strip())
+        except Exception:
+            pass
 
     except (ParseError, ValueError) as error:
         logger.warning("constraints: save study constraint error: %s", error)
@@ -236,6 +243,13 @@ async def delete_study_constraint_endpoint(
             start_time=start_time,
             end_time=end_time,
         )
+        # Telegram notification: constraint delete
+        try:
+            from .services.telegram_notifications import notify_constraint_delete
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_constraint_delete(actor, employee_name, constraint_date, start_time, end_time)
+        except Exception:
+            pass
     except Exception as error:
         logger.warning("constraints: delete error: %s", error)
 
@@ -281,6 +295,13 @@ async def save_schedule_preference(
             preference_type=preference_type,
             note=note.strip(),
         )
+        # Telegram notification: preference add
+        try:
+            from .services.telegram_notifications import notify_preference_add
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_preference_add(actor, employee_name.strip(), preference_date, preference_type, note.strip())
+        except Exception:
+            pass
 
     except (ParseError, ValueError) as error:
         logger.warning("constraints: preference error: %s", error)
@@ -315,6 +336,13 @@ async def delete_schedule_preference_endpoint(
             date_value=preference_date_parsed,
             preference_type=preference_type,
         )
+        # Telegram notification: preference delete
+        try:
+            from .services.telegram_notifications import notify_preference_delete
+            actor = request.session.get("logged_in_user", "unknown")
+            notify_preference_delete(actor, employee_name, preference_date, preference_type)
+        except Exception:
+            pass
     except Exception as error:
         logger.warning("constraints: delete error: %s", error)
 
@@ -626,70 +654,3 @@ async def delete_monthly_preference_endpoint(
     return RedirectResponse(f"/constraints?year={year}&month={month}", status_code=303)
 
 
-# =============================================================================
-# IMPORT FROM FOLDER (Импорт из папки с документами)
-# =============================================================================
-
-@router.post("/constraints/import-from-folder", response_class=JSONResponse)
-async def import_constraints_from_folder(
-    operators_dir: str = Form(...),
-    year: int = Form(...),
-    month: int = Form(...),
-) -> JSONResponse:
-    """
-    Импортирует ограничения (учёба, пожелания) из папки с документами сотрудников.
-    Анализирует Word-файлы и извлекает информацию.
-    """
-    err = _check_login(request)
-    if err:
-        from fastapi.responses import HTMLResponse
-        return err
-    if request.session.get("user_role") != "admin":
-        return JSONResponse(
-            {"success": False, "error": "Доступ только для администраторов"},
-            status_code=403,
-        )
-    from .operator_docs import import_operator_documents
-
-    try:
-        # Импортируем документы (без AI)
-        imported_employees, operator_constraints, operator_weekend_choices, docs_preview, warnings = import_operator_documents(
-            base_dir=operators_dir,
-            year=year,
-            month=month,
-        )
-        
-        # Сохраняем ограничения в БД
-        saved_count = 0
-        for constraint in operator_constraints:
-            if constraint.kind == "study":
-                upsert_study_constraint(
-                    employee_name=constraint.employee_name,
-                    date_value=constraint.date,
-                    start_time=constraint.start_time.strftime("%H:%M") if constraint.start_time else "00:00",
-                    end_time=constraint.end_time.strftime("%H:%M") if constraint.end_time else "23:59",
-                    note=constraint.note,
-                    is_strict=constraint.strict,
-                )
-                saved_count += 1
-            elif constraint.kind == "prefer_off":
-                upsert_schedule_preference(
-                    employee_name=constraint.employee_name,
-                    date_value=constraint.date,
-                    preference_type=constraint.kind,
-                    note=constraint.note,
-                )
-                saved_count += 1
-        
-        return JSONResponse({
-            "success": True,
-            "employees_imported": len(imported_employees),
-            "constraints_saved": saved_count,
-            "warnings": warnings,
-        })
-        
-    except Exception as error:
-        return JSONResponse({
-            "success": False,
-            "error": str(error),
-        }, status_code=400)
