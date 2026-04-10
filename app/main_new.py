@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 import calendar
 import json
 import os
@@ -104,6 +104,35 @@ def _check_submission_window(request: Request, employee_name: str):
         )
         return RedirectResponse(f"/my-schedule?employee_name={employee_name or current_user}", status_code=303)
     return None
+
+
+VLADIVOSTOK = timezone(timedelta(hours=10))
+
+
+def _maybe_send_daily_backup():
+    """Отправляет БД в Telegram при первом входе за день (по Владивостоку)."""
+    from .database import get_db_path, get_app_settings, set_app_settings
+    from .services.telegram_bot import send_backup
+
+    today_vlad = date.now(VLADIVOSTOK).isoformat()
+
+    settings = get_app_settings(["telegram_bot_token", "telegram_chat_id", "telegram_backup_enabled", "daily_backup_date"])
+
+    if settings.get("telegram_backup_enabled") != "true":
+        return
+    bot_token = settings.get("telegram_bot_token")
+    chat_id = settings.get("telegram_chat_id")
+    if not bot_token or not chat_id:
+        return
+
+    last_date = settings.get("daily_backup_date", "")
+    if last_date == today_vlad:
+        return  # Already sent today
+
+    db_path = get_db_path()
+    if send_backup(bot_token, chat_id, db_path):
+        set_app_settings({"daily_backup_date": today_vlad})
+        logger.info("Daily login backup sent for %s (Vladivostok)", today_vlad)
 
 
 BASE_DIR = Path(__file__).parent.parent
@@ -1938,6 +1967,13 @@ async def login_submit(
             notify_login(employee_name, user_role, client_ip)
         except Exception:
             pass
+
+        # Daily backup on first login of the day (Vladivostok UTC+10)
+        try:
+            _maybe_send_daily_backup()
+        except Exception:
+            pass
+
         response = RedirectResponse("/", status_code=303)
         return response
 
