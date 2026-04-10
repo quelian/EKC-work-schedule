@@ -47,6 +47,8 @@ from .database import (
     OperatorProfile,
     get_vacation_days_in_month,
     get_employee_month_adjustments_batch,
+    is_submission_window_open,
+    get_active_submission_window,
 )
 from .models import working_days_in_month
 from .form_state import resolve_period
@@ -85,6 +87,23 @@ class LoginRateLimiter:
 
 
 login_rate_limiter = LoginRateLimiter()
+
+
+def _check_submission_window(request: Request, employee_name: str):
+    """Проверяет, открыто ли окно редактирования для сотрудника.
+    Возвращает RedirectResponse с ошибкой если окно закрыто, или None если всё ок.
+    Администраторы不受 ограничений.
+    """
+    if request.session.get("user_role") == "admin":
+        return None
+    if not is_submission_window_open():
+        current_user = request.session.get("logged_in_user", "")
+        request.session["flash_error"] = (
+            "Редактирование расписания временно недоступно. "
+            "Обратитесь к администратору для получения информации о сроках."
+        )
+        return RedirectResponse(f"/my-schedule?employee_name={employee_name or current_user}", status_code=303)
+    return None
 
 
 BASE_DIR = Path(__file__).parent.parent
@@ -1096,6 +1115,8 @@ async def my_schedule_page(
         }
         calendar_days.append(day_data)
 
+    active_window = get_active_submission_window()
+
     context = {
         "request": request,
         "year": year,
@@ -1113,6 +1134,8 @@ async def my_schedule_page(
         "monthly_preferences": monthly_prefs,
         "active_page": "my-schedule",
         "user_role": request.session.get("user_role"),
+        "submission_window_open": active_window is not None,
+        "submission_window_info": active_window,
         "errors": [],
         "notices": [],
     }
@@ -1137,6 +1160,10 @@ async def add_unavailable(
     """Добавляет время, когда сотрудник не может работать."""
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
 
     from .parsers import parse_date
 
@@ -1185,6 +1212,10 @@ async def delete_unavailable(
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
 
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
+
     from .parsers import parse_date
 
     year, month = resolve_period(return_year, return_month)
@@ -1227,6 +1258,10 @@ async def add_preference(
     """Добавляет пожелание сотрудника."""
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
 
     from .parsers import parse_date
 
@@ -1278,6 +1313,10 @@ async def add_study_bulk(
     """Добавляет учебное ограничение к нескольким датам сразу."""
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
 
     from .parsers import parse_date
 
@@ -1341,6 +1380,10 @@ async def add_preference_bulk(
     """Добавляет пожелание сотрудника к нескольким датам сразу."""
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
 
     from .parsers import parse_date
 
@@ -1407,6 +1450,10 @@ async def delete_preference(
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
 
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
+
     from .parsers import parse_date
 
     current_user = get_current_user(request)
@@ -1449,6 +1496,10 @@ async def add_monthly_preference(
     """Добавляет месячное пожелание сотрудника."""
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
 
     from .parsers import parse_date
 
@@ -1500,6 +1551,10 @@ async def edit_monthly_preference(
     """Редактирует месячное пожелание (удаляет старое и добавляет новое)."""
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
 
     from .parsers import parse_date
 
@@ -1554,6 +1609,10 @@ async def delete_monthly_pref_endpoint(
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
 
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
+
     year, month = get_period_from_session_or_default(request, return_year, return_month)
 
     try:
@@ -1600,6 +1659,10 @@ async def add_constraint(
     """Добавляет ограничение (учёба или пожелание) из календаря."""
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
 
     from .parsers import parse_date
 
@@ -1672,6 +1735,10 @@ async def delete_constraint(
     if not request.session.get("logged_in_user"):
         return RedirectResponse("/login", status_code=303)
 
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
+
     from .parsers import parse_date
 
     current_user = get_current_user(request)
@@ -1717,6 +1784,13 @@ async def edit_constraint(
     return_year: int = None,
 ):
     """Редактирует ограничение по учёбе."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
+
     from .parsers import parse_date
 
     current_user = get_current_user(request)
@@ -1768,6 +1842,13 @@ async def edit_preference(
     return_year: int = None,
 ):
     """Редактирует пожелание сотрудника."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+
+    window_check = _check_submission_window(request, employee_name)
+    if window_check:
+        return window_check
+
     from .parsers import parse_date
 
     current_user = get_current_user(request)
@@ -1957,6 +2038,93 @@ async def change_password_submit(
 
 # =============================================================================
 # ADMIN - User Management
+# =============================================================================
+
+# =============================================================================
+# SUBMISSION WINDOWS (Окна редактирования расписания)
+# =============================================================================
+
+@app.get("/admin/submission-windows", response_class=HTMLResponse)
+async def submission_windows_page(request: Request) -> HTMLResponse:
+    """Страница управления окнами редактирования (только для админов)."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/", status_code=303)
+
+    from .database import list_submission_windows
+    windows = list_submission_windows()
+
+    # Определяем статус каждого окна
+    today = date.today().isoformat()
+    for w in windows:
+        if not w["is_active"]:
+            w["status"] = "inactive"
+        elif w["end_date"] < today:
+            w["status"] = "expired"
+        elif w["start_date"] > today:
+            w["status"] = "future"
+        else:
+            w["status"] = "active"
+
+    context = {
+        "request": request,
+        "windows": windows,
+        "active_page": "submission-windows",
+    }
+    return templates.TemplateResponse("submission_windows.html", context)
+
+
+@app.post("/admin/submission-windows/save", response_class=HTMLResponse)
+async def save_submission_window(
+    request: Request,
+    window_id: str = Form(""),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    description: str = Form(""),
+    is_active: str = Form(""),
+) -> HTMLResponse:
+    """Создаёт или обновляет окно редактирования."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/", status_code=303)
+
+    from .database import upsert_submission_window
+    wid = int(window_id) if window_id else None
+    upsert_submission_window(
+        window_id=wid,
+        start_date=start_date,
+        end_date=end_date,
+        description=description,
+        is_active=bool(is_active),
+    )
+
+    return RedirectResponse("/admin/submission-windows", status_code=303)
+
+
+@app.post("/admin/submission-windows/delete", response_class=HTMLResponse)
+async def delete_submission_window_endpoint(
+    request: Request,
+    window_id: str = Form(...),
+) -> HTMLResponse:
+    """Удаляет окно редактирования."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/", status_code=303)
+
+    from .database import delete_submission_window
+    delete_submission_window(int(window_id))
+
+    return RedirectResponse("/admin/submission-windows", status_code=303)
+
+
+# =============================================================================
+# ADMIN USERS
 # =============================================================================
 
 @app.get("/admin/users", response_class=HTMLResponse)

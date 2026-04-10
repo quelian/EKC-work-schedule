@@ -18,6 +18,7 @@ from .database import (
     upsert_monthly_preference,
     delete_monthly_preference,
     list_operator_profiles,
+    is_submission_window_open,
 )
 from .form_state import resolve_period
 from .parsers import ParseError, parse_date, parse_time
@@ -55,6 +56,23 @@ def _check_write_access(request: Request, employee_name: str) -> HTMLResponse | 
             '<html><body>Доступ только для своей учётной записи.</body></html>',
             status_code=403,
         )
+    return None
+
+
+def _check_submission_window(request: Request, employee_name: str) -> HTMLResponse | None:
+    """Returns redirect with error if submission window is closed for employee."""
+    user_role = request.session.get("user_role")
+    # Admin不受 ограничений
+    if user_role == "admin":
+        return None
+    if not is_submission_window_open():
+        from fastapi.responses import RedirectResponse
+        current_user = request.session.get("logged_in_user", "")
+        request.session["flash_error"] = (
+            "Редактирование расписания временно недоступно. "
+            "Обратитесь к администратору для получения информации о сроках."
+        )
+        return RedirectResponse(f"/my-schedule?employee_name={employee_name or current_user}", status_code=303)
     return None
 
 
@@ -173,6 +191,9 @@ async def save_study_constraint(
     write_err = _check_write_access(request, employee_name)
     if write_err:
         return write_err
+    window_err = _check_submission_window(request, employee_name)
+    if window_err:
+        return window_err
     year, month = resolve_period(return_year, return_month)
 
     try:
@@ -233,6 +254,9 @@ async def delete_study_constraint_endpoint(
     write_err = _check_write_access(request, employee_name)
     if write_err:
         return write_err
+    window_err = _check_submission_window(request, employee_name)
+    if window_err:
+        return window_err
     year, month = resolve_period(return_year, return_month)
 
     try:
@@ -278,6 +302,9 @@ async def save_schedule_preference(
     write_err = _check_write_access(request, employee_name)
     if write_err:
         return write_err
+    window_err = _check_submission_window(request, employee_name)
+    if window_err:
+        return window_err
     year, month = resolve_period(return_year, return_month)
 
     try:
@@ -594,6 +621,9 @@ async def save_monthly_preference(
     write_err = _check_write_access(request, employee_name)
     if write_err:
         return write_err
+    window_err = _check_submission_window(request, employee_name)
+    if window_err:
+        return window_err
     year, month = resolve_period(return_year, return_month)
 
     try:

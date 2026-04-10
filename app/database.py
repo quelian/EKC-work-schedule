@@ -98,7 +98,7 @@ class _ConnWrapper:
         setattr(self._cached_conn, name, value)
 
 # Текущая версия схемы. Увеличивается при каждом изменении структуры БД.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def get_db_path() -> Path:
@@ -186,6 +186,16 @@ def init_db() -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(employee_name, year, month, preference_type)
+            );
+
+            CREATE TABLE IF NOT EXISTS submission_windows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS holidays (
@@ -343,6 +353,13 @@ def init_db() -> None:
             _run_index_migration(connection)
             connection.execute(
                 "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('schema_version', '3')"
+            )
+            connection.commit()
+
+        if current_ver < 4:
+            # --- Migration v4: submission_windows table ---
+            connection.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('schema_version', '4')"
             )
             connection.commit()
 
@@ -2084,3 +2101,105 @@ def delete_monthly_preference(
             (employee_name, year, month, preference_type),
         )
         conn.commit()
+
+
+# =============================================================================
+# SUBMISSION WINDOWS (Окна редактирования расписания)
+# =============================================================================
+
+def list_submission_windows() -> list[dict]:
+    """Возвращает все окна редактирования, отсортированные по start_date."""
+    init_db()
+    with _get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM submission_windows ORDER BY start_date DESC"
+        ).fetchall()
+        return [
+            {
+                "id": row["id"],
+                "start_date": row["start_date"],
+                "end_date": row["end_date"],
+                "description": row["description"],
+                "is_active": bool(row["is_active"]),
+            }
+            for row in rows
+        ]
+
+
+def upsert_submission_window(
+    window_id: int | None,
+    start_date: str,
+    end_date: str,
+    description: str = "",
+    is_active: bool = True,
+) -> None:
+    """Создаёт или обновляет окно редактирования."""
+    init_db()
+    with _get_connection() as conn:
+        if window_id:
+            conn.execute(
+                """
+                UPDATE submission_windows SET
+                    start_date=?, end_date=?, description=?, is_active=?,
+                    updated_at=CURRENT_TIMESTAMP
+                WHERE id=?
+                """,
+                (start_date, end_date, description, int(is_active), window_id),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO submission_windows (start_date, end_date, description, is_active)
+                VALUES (?, ?, ?, ?)
+                """,
+                (start_date, end_date, description, int(is_active)),
+            )
+        conn.commit()
+
+
+def delete_submission_window(window_id: int) -> None:
+    """Удаляет окно редактирования."""
+    init_db()
+    with _get_connection() as conn:
+        conn.execute("DELETE FROM submission_windows WHERE id=?", (window_id,))
+        conn.commit()
+
+
+def is_submission_window_open() -> bool:
+    """Проверяет, есть ли активное окно редактирования на сегодня."""
+    init_db()
+    today = date.today().isoformat()
+    with _get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT 1 FROM submission_windows
+            WHERE is_active = 1 AND start_date <= ? AND end_date >= ?
+            LIMIT 1
+            """,
+            (today, today),
+        ).fetchone()
+        return row is not None
+
+
+def get_active_submission_window() -> dict | None:
+    """Возвращает активное окно редактирования на сегодня или None."""
+    init_db()
+    today = date.today().isoformat()
+    with _get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM submission_windows
+            WHERE is_active = 1 AND start_date <= ? AND end_date >= ?
+            ORDER BY end_date ASC
+            LIMIT 1
+            """,
+            (today, today),
+        ).fetchone()
+        if row:
+            return {
+                "id": row["id"],
+                "start_date": row["start_date"],
+                "end_date": row["end_date"],
+                "description": row["description"],
+            }
+        return None
