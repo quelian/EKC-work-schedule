@@ -1,7 +1,6 @@
 """Централизованный модуль Telegram-уведомлений для всех событий системы ЕКЦ График."""
 import logging
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -56,10 +55,6 @@ def _send(text: str) -> bool:
         return False
 
 
-def _now() -> str:
-    return datetime.now().strftime("%d.%m.%Y %H:%M")
-
-
 def _emoji(event_type: str) -> str:
     """Возвращает эмодзи для типа события (используем HTML-safe символы)."""
     icons = {
@@ -106,7 +101,6 @@ def notify_login(username: str, user_role: str, ip: str) -> bool:
         f"├ Пользователь: <b>{username}</b>\n"
         f"├ Роль: {user_role}\n"
         f"├ IP: {ip}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -117,7 +111,6 @@ def notify_logout(username: str, user_role: str) -> bool:
         f"{_emoji('logout')} <b>Выход из системы</b>\n"
         f"├ Пользователь: <b>{username}</b>\n"
         f"├ Роль: {user_role}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -138,7 +131,6 @@ def notify_schedule_save(
         f"├ Дата: {date}\n"
         f"├ Время: {start_time} — {end_time}\n"
         f"├ Тип: {shift_type}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -150,7 +142,6 @@ def notify_schedule_delete(actor: str, employee_name: str, date: str) -> bool:
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Дата: {date}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -178,7 +169,6 @@ def notify_employee_update(
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{name}</b>\n"
         f"├ Изменения: {changes_str}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -200,7 +190,6 @@ def notify_employee_adjustment(
         f"├ Период: {month:02d}.{year}\n"
         f"├ Изменение: {sign}{delta} ч\n"
         f"├ Итого корректировка: {new_adjustment} ч\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -211,7 +200,6 @@ def notify_employee_deactivate(actor: str, employee_name: str) -> bool:
         f"{_emoji('employee_deactivate')} <b>Сотрудник деактивирован</b>\n"
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{employee_name}</b>\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -230,7 +218,6 @@ def notify_vacation_save(
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Период: {start_date} — {end_date}{note_line}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -242,7 +229,6 @@ def notify_vacation_delete(actor: str, employee_name: str, vacation_id: int) -> 
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ ID записи: {vacation_id}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -263,7 +249,6 @@ def notify_constraint_add(
         f"├ Пользователь: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Дата: {date}{time_str}{note_line}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -281,7 +266,6 @@ def notify_constraint_delete(
         f"├ Пользователь: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Дата: {date} {start_time}—{end_time}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -308,7 +292,6 @@ def notify_preference_add(
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Дата: {date}\n"
         f"├ Тип: {type_label}{note_line}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -326,7 +309,6 @@ def notify_preference_delete(
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Дата: {date}\n"
         f"├ Тип: {preference_type}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -355,7 +337,6 @@ def notify_monthly_preference_add(
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Период: {month:02d}.{year}\n"
         f"├ Тип: {type_label}{time_str}{note_line}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -375,7 +356,6 @@ def notify_monthly_preference_edit(
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Период: {month:02d}.{year}\n"
         f"├ Было: {old_type} → Стало: {new_type}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -394,7 +374,6 @@ def notify_monthly_preference_delete(
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Период: {month:02d}.{year}\n"
         f"├ Тип: {preference_type}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -418,7 +397,6 @@ def notify_bulk_add(
         f"├ Пользователь: <b>{actor}</b>\n"
         f"├ Сотрудник: <b>{employee_name}</b>\n"
         f"├ Добавлено {label}: {success_count}{error_str}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -430,7 +408,6 @@ def notify_user_create(actor: str, new_user: str, role: str) -> bool:
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Новый пользователь: <b>{new_user}</b>\n"
         f"├ Роль: {role}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -441,7 +418,6 @@ def notify_user_delete(actor: str, deleted_user: str) -> bool:
         f"{_emoji('user_delete')} <b>Пользователь удалён</b>\n"
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Удалён: <b>{deleted_user}</b>\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -453,7 +429,6 @@ def notify_user_promote(actor: str, promoted_user: str) -> bool:
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Пользователь: <b>{promoted_user}</b>\n"
         f"├ Новая роль: администратор\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -465,7 +440,6 @@ def notify_user_demote(actor: str, demoted_user: str) -> bool:
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Пользователь: <b>{demoted_user}</b>\n"
         f"├ Новая роль: сотрудник\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -476,7 +450,6 @@ def notify_user_password_reset(actor: str, target_user: str) -> bool:
         f"{_emoji('user_password_reset')} <b>Сброс пароля</b>\n"
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Пользователь: <b>{target_user}</b>\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -486,7 +459,6 @@ def notify_password_change(username: str) -> bool:
     text = (
         f"{_emoji('password_change')} <b>Пароль изменён</b>\n"
         f"├ Пользователь: <b>{username}</b>\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -498,7 +470,6 @@ def notify_settings_change(actor: str, setting_name: str, old_value: str, new_va
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Параметр: {setting_name}\n"
         f"├ Было: {old_value} → Стало: {new_value}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -510,7 +481,6 @@ def notify_telegram_settings_change(actor: str, changed_fields: list[str]) -> bo
         f"{_emoji('settings_change')} <b>Настройки Telegram изменены</b>\n"
         f"├ Администратор: <b>{actor}</b>\n"
         f"├ Изменены поля: {fields}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -521,7 +491,6 @@ def notify_server_start(ip: str = "unknown", port: int = 8001) -> bool:
         f"{_emoji('server_start')} <b>Сервер запущен</b>\n"
         f"├ IP: {ip}\n"
         f"├ Порт: {port}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -530,7 +499,6 @@ def notify_server_stop() -> bool:
     """Уведомление об остановке сервера."""
     text = (
         f"{_emoji('server_stop')} <b>Сервер остановлен</b>\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -540,7 +508,6 @@ def notify_backup_success() -> bool:
     text = (
         f"{_emoji('backup_success')} <b>Бэкап выполнен успешно</b>\n"
         f"├ Архив отправлен в Telegram\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)
 
@@ -550,6 +517,5 @@ def notify_backup_failed(error: str = "Неизвестная ошибка") -> 
     text = (
         f"{_emoji('backup_failed')} <b>Бэкап не выполнен</b>\n"
         f"├ Ошибка: {error}\n"
-        f"└ Время: {_now()}"
     )
     return _send(text)

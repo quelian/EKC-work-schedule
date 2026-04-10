@@ -204,6 +204,20 @@ async def add_security_headers(request: Request, call_next):
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 templates.env.autoescape = True  # Enable XSS protection for all templates
 
+from datetime import datetime as _dt
+def _fmt_timestamp(ts: float) -> str:
+    return _dt.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M")
+templates.env.filters["datetime"] = _fmt_timestamp
+
+def _filesize(value: int) -> str:
+    """Format bytes into human-readable string (Russian locale)."""
+    for unit in ("Б", "КБ", "МБ", "ГБ"):
+        if abs(value) < 1024.0:
+            return f"{value:.1f} {unit}"
+        value /= 1024.0  # type: ignore
+    return f"{value:.1f} ТБ"
+templates.env.filters["filesizeformat"] = _filesize
+
 
 def merge_adjacent_shifts(shifts: list[dict]) -> list[dict]:
     """
@@ -2157,6 +2171,119 @@ async def delete_submission_window_endpoint(
     delete_submission_window(int(window_id))
 
     return RedirectResponse("/admin/submission-windows", status_code=303)
+
+
+# =============================================================================
+# DATABASE MANAGER (Файловый менеджер БД)
+# =============================================================================
+
+@app.get("/admin/database", response_class=HTMLResponse)
+async def admin_database_page(request: Request) -> HTMLResponse:
+    """Страница управления файлом базы данных."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/", status_code=303)
+
+    from .database import get_db_path
+    import os
+
+    db_path = get_db_path()
+    data_dir = db_path.parent
+
+    files = []
+    for f in sorted(data_dir.iterdir()):
+        if f.is_file():
+            stat = f.stat()
+            files.append({
+                "name": f.name,
+                "size": stat.st_size,
+                "modified": stat.st_mtime,
+                "ext": f.suffix,
+            })
+
+    context = {
+        "request": request,
+        "db_files": files,
+        "active_page": "database",
+    }
+    return templates.TemplateResponse("database_manager.html", context)
+
+
+@app.post("/admin/database/upload", response_class=HTMLResponse)
+async def admin_database_upload(request: Request) -> HTMLResponse:
+    """Загружает новый файл БД, заменяя текущую базу."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/", status_code=303)
+
+    from .database import get_db_path
+    import shutil
+
+    form = await request.form()
+    db_file = form.get("db_file")
+
+    if not db_file or not hasattr(db_file, "read"):
+        request.session["flash_error"] = "Файл не выбран. Выберите .db файл для загрузки."
+        return RedirectResponse("/admin/database", status_code=303)
+
+    db_path = get_db_path()
+    data_dir = db_path.parent
+
+    # Read uploaded file
+    content = await db_file.read()
+    if not content:
+        request.session["flash_error"] = "Загруженный файл пуст."
+        return RedirectResponse("/admin/database", status_code=303)
+
+    # Backup current DB
+    import time
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    backup_name = f"ekc_scheduler_backup_{timestamp}.db"
+    backup_path = data_dir / backup_name
+    if db_path.exists():
+        shutil.copy2(db_path, backup_path)
+
+    # Remove WAL/SHM to prevent stale journal issues after DB swap
+    for ext in ("-shm", "-wal"):
+        sibling = db_path.with_name(db_path.stem + ".db" + ext)
+        if sibling.exists():
+            sibling.unlink()
+
+    # Write new DB
+    db_path.write_bytes(content)
+
+    request.session["flash_success"] = f"База данных заменена. Старая версия сохранена как {backup_name}."
+    return RedirectResponse("/admin/database", status_code=303)
+
+
+@app.get("/admin/database/download/{filename}", response_class=HTMLResponse)
+async def admin_database_download_file(request: Request, filename: str) -> HTMLResponse:
+    """Скачивает отдельный файл из директории data/."""
+    if not request.session.get("logged_in_user"):
+        return RedirectResponse("/login", status_code=303)
+    if request.session.get("user_role") != "admin":
+        return RedirectResponse("/", status_code=303)
+
+    from .database import get_db_path
+    from fastapi import HTTPException
+
+    db_path = get_db_path()
+    data_dir = db_path.parent
+
+    # Security: only allow files in data/ directory
+    target = (data_dir / filename).resolve()
+    if not str(target).startswith(str(data_dir.resolve())):
+        raise HTTPException(status_code=403, detail="Доступ запрещён")
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+    return StreamingResponse(
+        target.open("rb"),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""},
+    )
 
 
 # =============================================================================
